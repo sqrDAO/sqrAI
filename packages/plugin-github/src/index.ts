@@ -101,6 +101,13 @@ const convertFileStructureToText = (fileList: string[]) => {
     return fileList.map(file => path.relative("/tmp/eliza/github", file)).join("\n");
 };
 
+const loadFiles = (repoPath: string, files: string[]) => {
+    return files.map(file => ({
+        path: file,
+        content: fs.readFileSync(path.join(repoPath, file), 'utf-8')
+    }));
+};
+
 const summarizeRepo = async (repoPath: string, runtime: IAgentRuntime, message: Memory) => {
     elizaLogger.log("Message:", message);
     try {
@@ -146,6 +153,61 @@ const summarizeRepo = async (repoPath: string, runtime: IAgentRuntime, message: 
         };
     } catch (error) {
         elizaLogger.error("Failed to summarize repo:", error);
+        return {
+            success: false,
+            error: error.message || "Unknown error occurred",
+        };
+    }
+};
+
+const generateRepoSummary = async (repo: Repo, runtime: IAgentRuntime, message: Memory, files: string[]) => {
+    elizaLogger.log("Generating repository summary:", message);
+    try {
+        const importantFiles = loadFiles(repo.localPath, files);
+
+        const context = `
+            Here is the file structure of a GitHub repository:
+           
+            ${importantFiles.map(file => `File: ${file.path}\nContent:\n${file.content}`).join('\n\n')}
+            
+            TASK: extract the following information:
+            - What is this repository about
+            - How this was supposed to be used
+            - Who are the targeted users
+            - Why this repo was made
+
+            Here are some important files:
+            ${importantFiles.map(file => `File: ${file.path}\nContent:\n${file.content}`).join('\n\n')}
+
+            Answer in JSON format string. For example:
+            \`\`\`json
+            {
+                "about": "This repository is about...",
+                "usage": "This repository is supposed to be used for...",
+                "targetedUsers": ["Developers", "Researchers"],
+                "purpose": "This repository was made to..."
+            }
+            \`\`\`
+            Keep the response concise and to the point, from 100 to 200 words.
+            
+            Additional context from user's message: ${message.content.text}
+        `;
+
+        const summary = await generateText({
+            runtime,
+            context,
+            modelClass: "small",
+        });
+
+        elizaLogger.log("Summary:", summary);
+        const parsedSummary = parseJSONObjectFromText(summary);
+
+        return {
+            success: true,
+            data: parsedSummary,
+        };
+    } catch (error) {
+        elizaLogger.error("Failed to generate repository summary:", error);
         return {
             success: false,
             error: error.message || "Unknown error occurred",
@@ -211,7 +273,7 @@ const cloneRepoAction: Action = {
                 embedding = await embed(runtime, `Successfully cloned repository: ${repoUrl[0]} at ${result.repo.localPath}`);
             }
 
-            runtime.knowledgeManager.createMemory({
+            await runtime.knowledgeManager.createMemory({
                 userId: message.userId,
                 agentId: message.agentId,
                 roomId: message.roomId,
@@ -283,7 +345,7 @@ const summarizeRepoAction: Action = {
         "GIT_SUMMARY",
         "SUMMARIZE_GIT_REPO",
     ],
-    description: "Summarize a cloned GitHub repository",
+    description: "Summarize or improve a summarization of a cloned GitHub repository",
     validate: async (runtime: IAgentRuntime, _message: Memory) => {
         elizaLogger.log("Validating summarize repo request");
         // TODO: what should we verify before summarizing a repo?
@@ -343,22 +405,21 @@ const summarizeRepoAction: Action = {
                 return;
             }
 
-            const summaryText = `Summary of the repository ${repo.name}: ${JSON.stringify(result.data)}`; const summaryEmbedding = await embed(runtime, summaryText);
+            // const summaryText = `Summary of the repository ${repo.name}: ${JSON.stringify(result.data)}`; 
+            // const summaryEmbedding = await embed(runtime, summaryText);
 
-            runtime.knowledgeManager.createMemory({
-                userId: message.userId,
-                agentId: message.agentId,
-                roomId: message.roomId,
-                embedding: summaryEmbedding,
-                content: {
-                    text: summaryText,
-                    action: "SUMMARIZE_REPO",
-                    repo,
-                    summary: result.data
-                }
-            });
-
-
+            // await runtime.knowledgeManager.createMemory({
+            //     userId: message.userId,
+            //     agentId: message.agentId,
+            //     roomId: message.roomId,
+            //     embedding: summaryEmbedding,
+            //     content: {
+            //         text: summaryText,
+            //         action: "SUMMARIZE_REPO",
+            //         repo,
+            //         summary: result.data
+            //     }
+            // });
 
             if (result.success) {
                 callback({
@@ -370,6 +431,32 @@ const summarizeRepoAction: Action = {
                     error: true,
                 });
             }
+
+            const contentSummaryResult = await generateRepoSummary(repo, runtime, message, result.data.importantFiles);
+
+            if (!contentSummaryResult.success) {
+                callback({
+                    text: `Failed to generate repository summary: ${contentSummaryResult.error}`,
+                    error: true,
+                });
+                return;
+            }
+
+            const contentSummaryText = `Summary of the repository ${repo.name}: ${JSON.stringify(contentSummaryResult.data)}`;
+            const contentSummaryEmbedding = await embed(runtime, contentSummaryText);
+
+            await runtime.knowledgeManager.createMemory({
+                userId: message.userId,
+                agentId: message.agentId,
+                roomId: message.roomId,
+                embedding: contentSummaryEmbedding,
+                content: {
+                    text: contentSummaryText,
+                    action: "SUMMARIZE_REPO",
+                    repo,
+                    summary: result.data
+                }
+            });
         } catch (error) {
             elizaLogger.error(`Failed to summarize repository. Error: ${error}`);
             callback({
