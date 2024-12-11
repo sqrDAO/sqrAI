@@ -31,6 +31,8 @@ import {
     coinbaseCommercePlugin,
     coinbaseMassPaymentsPlugin,
 } from "@ai16z/plugin-coinbase";
+import { githubPlugin } from "@ai16z/plugin-github";
+
 import Database from "better-sqlite3";
 import fs from "fs";
 import readline from "readline";
@@ -271,6 +273,7 @@ export function createAgent(
                 getSecret(character, "COINBASE_PRIVATE_KEY")
                 ? coinbaseMassPaymentsPlugin
                 : null,
+            githubPlugin,
         ].filter(Boolean),
         providers: [],
         actions: [],
