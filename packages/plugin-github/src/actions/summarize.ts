@@ -1,7 +1,6 @@
 import { Action, elizaLogger, embed, generateText, HandlerCallback, IAgentRuntime, Memory, parseJSONObjectFromText, State } from "@ai16z/eliza";
 import { convertFileStructureToText, getFileStructure, loadFiles } from "./utils";
 import { Repo } from "./clone";
-import { call } from "viem/actions";
 
 const summarizeRepo = async (repoPath: string, runtime: IAgentRuntime, message: Memory) => {
     elizaLogger.log("Message:", message);
