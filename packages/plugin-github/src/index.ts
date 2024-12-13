@@ -89,13 +89,12 @@ const queryProjectAction: Action = {
         while (attempts < 1 && !sufficientKnowledge) {
             attempts++;
 
-            // Check if existing knowledge is sufficient
+            // get top-5 related knowledge
             const knowledge = await runtime.knowledgeManager.searchMemoriesByEmbedding(
                 embedding,
                 {
                     roomId: message.roomId,
                     count: 5,
-                    match_threshold: 0.001,
                 });
 
             elizaLogger.log("Existing Knowledge:", knowledge);
@@ -126,7 +125,7 @@ const queryProjectAction: Action = {
                 elizaLogger.log("Sufficient Knowledge Response:", response);
 
                 // answer anyway
-                if (1 || parseBooleanFromText(response)) {
+                if (parseBooleanFromText(response)) {
                     callback({
                         text: `I found sufficient information: ${knowledge[0].content.text}`,
                     });
@@ -156,17 +155,21 @@ const queryProjectAction: Action = {
             }
 
             const fileList = getFileStructure(repoPath, 3);
+            elizaLogger.log("File List:", fileList);
             const unreadFiles = fileList.filter(file => !checkedFiles.some(f => f === file));
 
             const filesRespond = await generateText({
                 runtime,
                 context: `
-                    Determine up to 10 files to read to gather more information about the project.
+                    Determine up to 5 files to read to gather more information about the project.
                     The file should contain information that can help answer the question:
                     ${message.content.text}
                     ---
                     List of potential files:
                     ${unreadFiles.join('\n')}
+                    ---
+                    List of files already checked:
+                    ${checkedFiles.join('\n')}
                 ` + stringArrayFooter,
                 modelClass: "small",
             });
@@ -181,6 +184,7 @@ const queryProjectAction: Action = {
             // no need repoPath as getFileStructure will return full path
             const filesContent = loadFiles('', filesToRead);
             for (const file of filesContent) {
+                checkedFiles.push(file.path);
                 if (!file.content) {
                     continue;
                 }
@@ -191,18 +195,18 @@ const queryProjectAction: Action = {
                     Content: ${file.content}
                     `
                 );
-                // await runtime.knowledgeManager.createMemory({
-                //     userId: message.userId,
-                //     agentId: message.agentId,
-                //     roomId: message.roomId,
-                //     unique: true,
-                //     embedding,
-                //     content: {
-                //         text: file.content,
-                //         path: file.path,
-                //         action: "READ_FILE",
-                //     },
-                // });
+                await runtime.knowledgeManager.createMemory({
+                    userId: message.userId,
+                    agentId: message.agentId,
+                    roomId: message.roomId,
+                    unique: true,
+                    embedding,
+                    content: {
+                        text: file.content,
+                        path: file.path,
+                        action: "READ_FILE",
+                    },
+                });
             }
         }
 
