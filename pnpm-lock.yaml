@@ -120,6 +120,9 @@ importers:
       '@ai16z/client-farcaster':
         specifier: workspace:*
         version: link:../packages/client-farcaster
+      '@ai16z/client-github':
+        specifier: workspace:*
+        version: link:../packages/client-github
       '@ai16z/client-telegram':
         specifier: workspace:*
         version: link:../packages/client-telegram
