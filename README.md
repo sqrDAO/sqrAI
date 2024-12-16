@@ -42,8 +42,6 @@ A well-organized knowledge base is essential for any web3 project. It helps:
 
 sqrAI is still under development 🚧. We are working on its core features and testing it with a few web3 projects.
 
-**If you're interested in trying sqrAI or learning more, please contact us at [your contact email or link to your Discord/Telegram].**
-
 ## Roadmap
 
 Right now, we're focused on building the most important features of sqrAI, like creating documentation and helping with community interaction. We will add more features based on your feedback and what the web3 community needs.
@@ -56,6 +54,6 @@ Right now, we're focused on building the most important features of sqrAI, like 
 
 ## Stay Connected
 
-Follow us on [your social media channels] to stay updated on sqrAI's development and join our community!
+Follow us on [@sqrfund_ai](https://x.com/sqrfund_ai) to stay updated on sqrAI's development and join our community!
 
 We're excited to help web3 developers with sqrAI! 🚀
