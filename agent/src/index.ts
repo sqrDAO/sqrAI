@@ -6,6 +6,7 @@ import { DiscordClientInterface } from "@ai16z/client-discord";
 import { TelegramClientInterface } from "@ai16z/client-telegram";
 import { TwitterClientInterface } from "@ai16z/client-twitter";
 import { FarcasterAgentClient } from "@ai16z/client-farcaster";
+import { GitHubClientInterface } from "@ai16z/client-github";
 import {
     AgentRuntime,
     CacheManager,
@@ -331,9 +332,9 @@ export async function initializeClients(
     // each client can only register once
     // and if we want two we can explicitly support it
     const clients: Record<string, any> = {};
-    const clientTypes:string[] =
+    const clientTypes: string[] =
         character.clients?.map((str) => str.toLowerCase()) || [];
-    elizaLogger.log('initializeClients', clientTypes, 'for', character.name)
+    elizaLogger.log("initializeClients", clientTypes, "for", character.name);
 
     if (clientTypes.includes("auto")) {
         const autoClient = await AutoClientInterface.start(runtime);
@@ -351,7 +352,9 @@ export async function initializeClients(
     }
 
     if (clientTypes.includes("twitter")) {
-        TwitterClientInterface.enableSearch = !isFalsish(getSecret(character, "TWITTER_SEARCH_ENABLE"));
+        TwitterClientInterface.enableSearch = !isFalsish(
+            getSecret(character, "TWITTER_SEARCH_ENABLE")
+        );
         const twitterClient = await TwitterClientInterface.start(runtime);
         if (twitterClient) clients.twitter = twitterClient;
     }
@@ -360,12 +363,18 @@ export async function initializeClients(
         // why is this one different :(
         const farcasterClient = new FarcasterAgentClient(runtime);
         if (farcasterClient) {
-          farcasterClient.start();
-          clients.farcaster = farcasterClient;
+            farcasterClient.start();
+            clients.farcaster = farcasterClient;
         }
     }
 
-    elizaLogger.log('client keys', Object.keys(clients));
+    if (clientTypes.includes("github")) {
+        const githubClientInterface =
+            await GitHubClientInterface.start(runtime);
+        clients.push(githubClientInterface);
+    }
+
+    elizaLogger.log("client keys", Object.keys(clients));
 
     if (character.plugins?.length > 0) {
         for (const plugin of character.plugins) {
@@ -388,10 +397,19 @@ function isFalsish(input: any): boolean {
     }
 
     // Convert input to a string if it's not null or undefined
-    const value = input == null ? '' : String(input);
+    const value = input == null ? "" : String(input);
 
     // List of common falsish string representations
-    const falsishValues = ['false', '0', 'no', 'n', 'off', 'null', 'undefined', ''];
+    const falsishValues = [
+        "false",
+        "0",
+        "no",
+        "n",
+        "off",
+        "null",
+        "undefined",
+        "",
+    ];
 
     // Check if the value (trimmed and lowercased) is in the falsish list
     return falsishValues.includes(value.trim().toLowerCase());
@@ -408,7 +426,7 @@ export async function createAgent(
     db: IDatabaseAdapter,
     cache: ICacheManager,
     token: string
-):AgentRuntime {
+): AgentRuntime {
     elizaLogger.success(
         elizaLogger.successesTitle,
         "Creating runtime for character",
@@ -512,7 +530,7 @@ function initializeDbCache(character: Character, db: IDatabaseCacheAdapter) {
     return cache;
 }
 
-async function startAgent(character: Character, directClient):AgentRuntime {
+async function startAgent(character: Character, directClient): AgentRuntime {
     let db: IDatabaseAdapter & IDatabaseCacheAdapter;
     try {
         character.id ??= stringToUuid(character.name);
@@ -531,7 +549,12 @@ async function startAgent(character: Character, directClient):AgentRuntime {
         await db.init();
 
         const cache = initializeDbCache(character, db);
-        const runtime:AgentRuntime = await createAgent(character, db, cache, token);
+        const runtime: AgentRuntime = await createAgent(
+            character,
+            db,
+            cache,
+            token
+        );
 
         // start services/plugins/process knowledge
         await runtime.initialize();
@@ -543,7 +566,7 @@ async function startAgent(character: Character, directClient):AgentRuntime {
         directClient.registerAgent(runtime);
 
         // report to console
-        elizaLogger.debug(`Started ${character.name} as ${runtime.agentId}`)
+        elizaLogger.debug(`Started ${character.name} as ${runtime.agentId}`);
 
         return runtime;
     } catch (error) {
