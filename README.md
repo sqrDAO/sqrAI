@@ -1,136 +1,61 @@
-# Eliza 🤖
+# sqrAI: Your AI-Powered Knowledge Base Builder for Web3 🧠
 
-<div align="center">
-  <img src="./docs/static/img/eliza_banner.jpg" alt="Eliza Banner" width="100%" />
-</div>
+sqrAI is an AI assistant that helps web3 project founders and teams build a strong knowledge base.  This makes it easier to share information, onboard new members, and grow your community.
 
-<div align="center">
+Think of sqrAI as your tireless teammate dedicated to organizing and sharing project knowledge! 📚
 
-  📖 [Documentation](https://ai16z.github.io/eliza/) | 🎯 [Examples](https://github.com/thejoven/awesome-eliza)
+**Feed sqrAI with information from everywhere!**
 
-</div>
+You can:
 
-## 🌍 README Translations
+* **Chat with sqrAI directly 💬:** Ask questions, give instructions, and provide information through prompts.
+* **Send notes 📝:**  Share important updates, meeting summaries, or key insights with sqrAI.
+* **Connect Telegram chats 🔗:**  Have sqrAI automatically learn from your daily Telegram conversations.
+* **Add Twitter Spaces AMA transcripts 🐦:**  Feed sqrAI with valuable insights from your community AMAs.
+* **And much more!** The more information you provide, the smarter sqrAI becomes!
 
-[中文说明](./README_CN.md) | [日本語の説明](./README_JA.md) | [한국어 설명](./README_KOR.md) | [Français](./README_FR.md) | [Português](./README_PTBR.md) | [Türkçe](./README_TR.md) | [Русский](./README_RU.md) | [Español](./README_ES.md) | [Italiano](./README_IT.md) | [ไทย](./README_TH.md) | [Deutsch](./README_DE.md)
+**Here's how sqrAI helps:**
 
-## ✨ Features
+* **Turns information into a knowledge base 🤖➡️📚:**  sqrAI organizes and structures all the information you provide, making it easy to find and use.
+* **Creates documentation 📝:**  sqrAI automatically generates documentation from your code and other sources.
+* **Keeps your knowledge base up-to-date 🔄:** As your project changes, sqrAI makes sure your knowledge base stays current and accurate.
+* **Answers questions and helps your community 💬:** sqrAI acts as a knowledgeable assistant, providing information and support to your community members.
 
--   🛠️ Full-featured Discord, Twitter and Telegram connectors
--   🔗 Support for every model (Llama, Grok, OpenAI, Anthropic, etc.)
--   👥 Multi-agent and room support
--   📚 Easily ingest and interact with your documents
--   💾 Retrievable memory and document store
--   🚀 Highly extensible - create your own actions and clients
--   ☁️ Supports many models (local Llama, OpenAI, Anthropic, Groq, etc.)
--   📦 Just works!
+## Why a Knowledge Base is Important
 
-## Video Tutorials
-[AI Agent Dev School](https://www.youtube.com/watch?v=ArptLpQiKfI&list=PLx5pnFXdPTRzWla0RaOxALTSTnVq53fKL)
+A well-organized knowledge base is essential for any web3 project. It helps:
 
-## 🎯 Use Cases
+* **Onboard new team members and contributors quickly 🚀**
+* **Share important information with your community 📢**
+* **Attract investors and partners by showcasing your project clearly ✨**
+* **Reduce repetitive questions and support requests ⏳**
 
--   🤖 Chatbots
--   🕵️ Autonomous Agents
--   📈 Business Process Handling
--   🎮 Video Game NPCs
--   🧠 Trading
+## Key Features
 
-## 🚀 Quick Start
+* **Automatic Documentation 🤖📝:** sqrAI creates initial versions of your project documentation from your code.
+* **Documentation Updates 🔄📄:** sqrAI keeps your documentation in sync with your code.
+* **Code Suggestions 🤖💡:** sqrAI helps you write better code by giving helpful suggestions.
+* **Community Help 💬🤝:** sqrAI answers questions and talks with your community.
+* **Secure Information Storage 🔒🗄️:** sqrAI keeps your project information safe and organized.
 
-### Prerequisites
+## Getting Started
 
--   [Python 2.7+](https://www.python.org/downloads/)
--   [Node.js 23+](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
--   [pnpm](https://pnpm.io/installation)
+sqrAI is still under development 🚧. We are working on its core features and testing it with a few web3 projects.
 
-> **Note for Windows Users:** [WSL 2](https://learn.microsoft.com/en-us/windows/wsl/install-manual) is required.
+**If you're interested in trying sqrAI or learning more, please contact us at [your contact email or link to your Discord/Telegram].**
 
-### Use the Starter (Recommended)
+## Roadmap
 
-```bash
-git clone https://github.com/ai16z/eliza-starter.git
+Right now, we're focused on building the most important features of sqrAI, like creating documentation and helping with community interaction. We will add more features based on your feedback and what the web3 community needs.
 
-cp .env.example .env
+**Key Milestones:**
 
-pnpm i && pnpm build && pnpm start
-```
+* **Phase 1 (Now - December 24th):**  Build the core features and do initial testing.
+* **Phase 2 (January - February):**  Have more people try sqrAI and give us feedback.
+* **Phase 3 (March):**  Get ready to share sqrAI with everyone, including writing documentation and making sure it's secure.
 
-Then read the [Documentation](https://ai16z.github.io/eliza/) to learn how to customize your Eliza.
+## Stay Connected
 
-### Manually Start Eliza (Only recommended if you know what you are doing)
+Follow us on [your social media channels] to stay updated on sqrAI's development and join our community!
 
-```bash
-# Clone the repository
-git clone https://github.com/ai16z/eliza.git
-
-# Checkout the latest release
-# This project iterates fast, so we recommend checking out the latest release
-git checkout $(git describe --tags --abbrev=0)
-```
-
-### Start Eliza with Gitpod
-
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/ai16z/eliza/tree/main)
-
-### Edit the .env file
-
-Copy .env.example to .env and fill in the appropriate values.
-
-```
-cp .env.example .env
-```
-
-Note: .env is optional. If your planning to run multiple distinct agents, you can pass secrets through the character JSON
-
-### Automatically Start Eliza
-
-This will run everything to setup the project and start the bot with the default character.
-
-```bash
-sh scripts/start.sh
-```
-
-### Edit the character file
-
-1. Open `packages/core/src/defaultCharacter.ts` to modify the default character. Uncomment and edit.
-
-2. To load custom characters:
-    - Use `pnpm start --characters="path/to/your/character.json"`
-    - Multiple character files can be loaded simultaneously
-3. Connect with X (Twitter)
-    - change `"clients": []` to `"clients": ["twitter"]` in the character file to connect with X
-
-### Manually Start Eliza
-
-```bash
-pnpm i
-pnpm build
-pnpm start
-
-# The project iterates fast, sometimes you need to clean the project if you are coming back to the project
-pnpm clean
-```
-
-#### Additional Requirements
-
-You may need to install Sharp. If you see an error when starting up, try installing it with the following command:
-
-```
-pnpm install --include=optional sharp
-```
-
-### Community & contact
-
--   [GitHub Issues](https://github.com/ai16z/eliza/issues). Best for: bugs you encounter using Eliza, and feature proposals.
--   [Discord](https://discord.gg/ai16z). Best for: sharing your applications and hanging out with the community.
-
-## Contributors
-
-<a href="https://github.com/ai16z/eliza/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=ai16z/eliza" />
-</a>
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=ai16z/eliza&type=Date)](https://star-history.com/#ai16z/eliza&Date)
+We're excited to help web3 developers with sqrAI! 🚀
