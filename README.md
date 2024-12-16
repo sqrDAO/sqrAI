@@ -32,25 +32,13 @@ A well-organized knowledge base is essential for any web3 project. It helps:
 
 ## Key Features
 
-* **Automatic Documentation 🤖📝:** sqrAI creates initial versions of your project documentation from your code.
-* **Documentation Updates 🔄📄:** sqrAI keeps your documentation in sync with your code.
-* **Code Suggestions 🤖💡:** sqrAI helps you write better code by giving helpful suggestions.
-* **Community Help 💬🤝:** sqrAI answers questions and talks with your community.
-* **Secure Information Storage 🔒🗄️:** sqrAI keeps your project information safe and organized.
+* **Automatic Documentation:** sqrAI creates initial versions of your project documentation from your code.
+* **Documentation Updates:** sqrAI keeps your documentation in sync with your code.
+* **Community Help:** sqrAI answers questions and talks with your community.
 
 ## Getting Started
 
 sqrAI is still under development 🚧. We are working on its core features and testing it with a few web3 projects.
-
-## Roadmap
-
-Right now, we're focused on building the most important features of sqrAI, like creating documentation and helping with community interaction. We will add more features based on your feedback and what the web3 community needs.
-
-**Key Milestones:**
-
-* **Phase 1 (Now - December 24th):**  Build the core features and do initial testing.
-* **Phase 2 (January - February):**  Have more people try sqrAI and give us feedback.
-* **Phase 3 (March):**  Get ready to share sqrAI with everyone, including writing documentation and making sure it's secure.
 
 ## Stay Connected
 
