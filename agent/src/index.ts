@@ -371,7 +371,9 @@ export async function initializeClients(
     if (clientTypes.includes("github")) {
         const githubClientInterface =
             await GitHubClientInterface.start(runtime);
-        clients.push(githubClientInterface);
+        if (githubClientInterface){
+            client.github = githubClientInterface;
+        }
     }
 
     elizaLogger.log("client keys", Object.keys(clients));
