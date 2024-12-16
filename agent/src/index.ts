@@ -371,8 +371,8 @@ export async function initializeClients(
     if (clientTypes.includes("github")) {
         const githubClientInterface =
             await GitHubClientInterface.start(runtime);
-        if (githubClientInterface){
-            client.github = githubClientInterface;
+        if (githubClientInterface) {
+            clients.github = githubClientInterface;
         }
     }
 
