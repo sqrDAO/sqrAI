@@ -5,7 +5,7 @@ import {
     parseBooleanFromText,
     parseJSONObjectFromText,
     parseJsonArrayFromText,
-    stringArrayFooter
+    stringArrayFooter,
 } from "@ai16z/eliza";
 import {
     Action,
@@ -15,11 +15,14 @@ import {
     Plugin,
     State,
 } from "@ai16z/eliza";
+import fs from "fs";
+import path from "path";
 import { generateText } from "@ai16z/eliza"; // Assuming generateText is a function from the eliza package
 import { cloneRepoAction, Repo } from "./actions/clone";
 import { getFileStructure, loadFiles } from "./actions/utils";
 import { summarizeRepoAction } from "./actions/summarize";
-import { elysiumTestnet } from "viem/chains";
+import PostgresSingleton from "./services/pg";
+import { fileURLToPath } from "url";
 
 const queryProjectAction: Action = {
     name: "EXPLAIN_PROJECT",
@@ -31,7 +34,8 @@ const queryProjectAction: Action = {
         "EXPLAIN_CODE",
         "EXPLAIN_PROJECT",
     ],
-    description: "Explain how a project works or provide information such as usage or purpose of a project",
+    description:
+        "Explain how a project works or provide information such as usage or purpose of a project",
     validate: async (runtime: IAgentRuntime, _message: Memory) => {
         elizaLogger.log("Validating query project request");
         return true;
@@ -52,9 +56,15 @@ const queryProjectAction: Action = {
         //     roomId: message.roomId,
         // });
 
-        const memory = [await runtime.knowledgeManager.getMemoryById("f6de09a2-4b7c-44d7-bc58-c983ad69e9b1")];
+        const memory = [
+            await runtime.knowledgeManager.getMemoryById(
+                "f6de09a2-4b7c-44d7-bc58-c983ad69e9b1"
+            ),
+        ];
 
-        const repoMemory = memory.find((m) => m.content.action === "CLONE_REPO");
+        const repoMemory = memory.find(
+            (m) => m.content.action === "CLONE_REPO"
+        );
         const repo = repoMemory?.content.repo as Repo;
 
         if (!repo) {
@@ -90,27 +100,34 @@ const queryProjectAction: Action = {
             attempts++;
 
             // get top-5 related knowledge
-            const knowledge = await runtime.knowledgeManager.searchMemoriesByEmbedding(
-                embedding,
-                {
-                    roomId: message.roomId,
-                    count: 5,
-                });
+            const knowledge =
+                await runtime.knowledgeManager.searchMemoriesByEmbedding(
+                    embedding,
+                    {
+                        roomId: message.roomId,
+                        count: 5,
+                    }
+                );
 
             elizaLogger.log("Existing Knowledge:", knowledge);
 
             knowledge.forEach((k) => {
                 const parsedContent = parseJSONObjectFromText(k.content.text);
-                if (parsedContent && parsedContent.path && !checkedFiles.includes(parsedContent.path)) {
+                if (
+                    parsedContent &&
+                    parsedContent.path &&
+                    !checkedFiles.includes(parsedContent.path)
+                ) {
                     checkedFiles.push(parsedContent.path);
                 }
             });
             elizaLogger.log("Checked Files:", checkedFiles);
 
             if (knowledge.length > 0) {
-                const context = `
+                const context =
+                    `
                     Here is the existing knowledge about the project:
-                    ${knowledge.map(k => k.content.text).join('\n')}
+                    ${knowledge.map((k) => k.content.text).join("\n")}
                     
                     TASK: Determine if the existing knowledge is sufficient to answer the following question:
                     ${message.content.text}
@@ -132,13 +149,13 @@ const queryProjectAction: Action = {
                     sufficientKnowledge = true;
                     const context = `
                         Here is the existing knowledge about the project:
-                        ${knowledge.map(k => k.content.text).join('\n')}
+                        ${knowledge.map((k) => k.content.text).join("\n")}
                         
                         TASK: Answer the following question:
                         ${message.content.text}
 
                         Answer clearly and concisely. Provide references to files or code snippets if necessary.
-                    `
+                    `;
 
                     const answer = await generateText({
                         runtime,
@@ -147,8 +164,8 @@ const queryProjectAction: Action = {
                     });
 
                     callback({
-                        text: answer
-                    })
+                        text: answer,
+                    });
 
                     return true;
                 }
@@ -156,20 +173,23 @@ const queryProjectAction: Action = {
 
             const fileList = getFileStructure(repoPath, 3);
             elizaLogger.log("File List:", fileList);
-            const unreadFiles = fileList.filter(file => !checkedFiles.some(f => f === file));
+            const unreadFiles = fileList.filter(
+                (file) => !checkedFiles.some((f) => f === file)
+            );
 
             const filesRespond = await generateText({
                 runtime,
-                context: `
+                context:
+                    `
                     Determine up to 5 files to read to gather more information about the project.
                     The file should contain information that can help answer the question:
                     ${message.content.text}
                     ---
                     List of potential files:
-                    ${unreadFiles.join('\n')}
+                    ${unreadFiles.join("\n")}
                     ---
                     List of files already checked:
-                    ${checkedFiles.join('\n')}
+                    ${checkedFiles.join("\n")}
                 ` + stringArrayFooter,
                 modelClass: "small",
             });
@@ -182,13 +202,14 @@ const queryProjectAction: Action = {
 
             // Read these files and store their embedding
             // no need repoPath as getFileStructure will return full path
-            const filesContent = loadFiles('', filesToRead);
+            const filesContent = loadFiles("", filesToRead);
             for (const file of filesContent) {
                 checkedFiles.push(file.path);
                 if (!file.content) {
                     continue;
                 }
-                const embedding = await embed(runtime,
+                const embedding = await embed(
+                    runtime,
                     `
                     Project: ${repo.owner}\\${repo.name}\n
                     Path: ${file.path}\n
@@ -215,17 +236,16 @@ const queryProjectAction: Action = {
                 text: "I couldn't gather enough information after multiple attempts.",
                 error: true,
             });
-            return false
+            return false;
         }
 
-        return true
+        return true;
     },
     examples: [
         [
             {
                 user: "{{user1}}",
                 content: { text: "What is the purpose of this project?" },
-
             },
             {
                 user: "{{agentName}}",
@@ -238,15 +258,17 @@ const queryProjectAction: Action = {
         [
             {
                 user: "{{user1}}",
-                content: { text: "How to use this project to build a web application?" },
+                content: {
+                    text: "How to use this project to build a web application?",
+                },
             },
             {
                 user: "{{agentName}}",
                 content: {
                     text: "I'll look into the project to find out.",
                     action: "HOW_TO_USE",
-                }
-            }
+                },
+            },
         ],
         [
             {
@@ -258,12 +280,27 @@ const queryProjectAction: Action = {
                 content: {
                     text: "I'll look into the project to find out.",
                     action: "EXPLAIN_PROJECT",
-                }
-            }
-        ]
+                },
+            },
+        ],
     ],
 } as Action;
 
+let pgClient = null;
+export async function initDB() {
+    pgClient = await PostgresSingleton.getInstance().getClient();
+
+    const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
+    const __dirname = path.dirname(__filename); // get the name of the directory
+
+    const githubSchema = fs.readFileSync(
+        path.resolve(__dirname, "../schema.sql"),
+        "utf8"
+    );
+    pgClient.query(githubSchema);
+}
+
+initDB().then(() => console.log("create db success"));
 export const githubPlugin: Plugin = {
     name: "githubPlugin",
     description: "Plugin for GitHub integration",
