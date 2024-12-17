@@ -1,6 +1,15 @@
-import { Action, elizaLogger, embed, HandlerCallback, IAgentRuntime, Memory, State } from "@ai16z/eliza";
+import {
+    Action,
+    elizaLogger,
+    embed,
+    HandlerCallback,
+    IAgentRuntime,
+    Memory,
+    State,
+} from "@ai16z/eliza";
 import fs from "fs";
 import { spawn } from "child_process";
+import path from "path";
 
 export type Repo = {
     url: string;
@@ -9,22 +18,35 @@ export type Repo = {
     localPath: string;
 };
 
-export const cloneRepo = async (repoUrl: string):
-    Promise<{ success: boolean; data?: string; error?: string; repo?: Repo }> => {
+export const cloneRepo = async (
+    repoUrl: string
+): Promise<{
+    success: boolean;
+    data?: string;
+    error?: string;
+    repo?: Repo;
+}> => {
     try {
         elizaLogger.log("Cloning repo:", repoUrl);
 
-        const repoName = repoUrl.split("/").pop();
+        const parts = repoUrl.split("/");
+        if (parts.length < 2) {
+            throw Error("Invalid  github URL structure");
+        }
+        const owner = parts[parts.length - 2];
+        const repoName = parts[parts.length - 1];
+
+        const repoPath = path.join(process.cwd(), ".repos", owner, repoName);
 
         // we assume a working directory is set up for the agent
         // and the repository will be cloned into that directory
-        const cloneDir = `/home/quangvn6/.eliza/github/${repoName}`;
+        const cloneDir = repoPath;
         fs.mkdirSync(cloneDir, { recursive: true });
 
         const repo: Repo = {
             url: repoUrl,
             name: repoName,
-            owner: repoUrl.split("/")[3],
+            owner: owner,
             localPath: cloneDir,
         };
 
@@ -34,7 +56,7 @@ export const cloneRepo = async (repoUrl: string):
             return {
                 success: true,
                 data: "Repository already cloned",
-                repo
+                repo,
             };
         }
 
@@ -57,13 +79,13 @@ export const cloneRepo = async (repoUrl: string):
             return {
                 success: false,
                 error: "Failed to clone repository",
-            }
+            };
         }
 
         return {
             success: true,
             data: `Repository cloned successfully at ${cloneDir}`,
-            repo
+            repo,
         };
     } catch (error) {
         elizaLogger.error("Failed to clone repo:", error);
@@ -94,7 +116,7 @@ export const cloneRepoAction: Action = {
         // For example, we could check if the user has the necessary permissions
         // to clone the repository.
         // We could also check if the local folder where the repository will be cloned exists.
-        return true
+        return true;
     },
     handler: async (
         runtime: IAgentRuntime,
@@ -107,13 +129,13 @@ export const cloneRepoAction: Action = {
 
         // Get the repository URL from the message using regex
         const repoUrl = message.content.text.match(
-            'https:\/\/github\.com\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+\/?'
+            "https://github.com/[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+/?"
         );
 
         elizaLogger.log("Repo URL:", repoUrl);
 
         if (!repoUrl || repoUrl.length < 1) {
-            callback({
+            await callback({
                 text: "Could you please provide a valid GitHub repository URL?",
             });
             return;
@@ -121,37 +143,40 @@ export const cloneRepoAction: Action = {
 
         elizaLogger.log("Cloning Repo:", repoUrl[0]);
 
-        callback({
+        await callback({
             text: `I'll clone the repository at ${repoUrl[0]}`,
         });
 
         try {
             const result = await cloneRepo(repoUrl[0]);
-            let embedding = []
+            const embedding = [];
             if (result.success) {
-                embedding = await embed(runtime, `Successfully cloned repository: ${repoUrl[0]} at ${result.repo.localPath}`);
+                // embedding = await embed(
+                //     runtime,
+                //     `Successfully cloned repository: ${repoUrl[0]} at ${result.repo.localPath}`
+                // );
             }
 
-            await runtime.knowledgeManager.createMemory({
-                userId: message.userId,
-                agentId: message.agentId,
-                roomId: message.roomId,
-                embedding,
+            // await runtime.knowledgeManager.createMemory({
+            //     userId: message.userId,
+            //     agentId: message.agentId,
+            //     roomId: message.roomId,
+            //     embedding,
 
-                content: {
-                    text: result.data || result.error,
-                    action: "CLONE_REPO",
-                    repo: result.repo,
-                }
-            });
+            //     content: {
+            //         text: result.data || result.error,
+            //         action: "CLONE_REPO",
+            //         repo: result.repo,
+            //     },
+            // });
 
             if (result.success) {
-                callback({
+                await callback({
                     text: "Repository cloned successfully",
                 });
                 return true;
             } else {
-                callback({
+                await callback({
                     text: `Failed to clone repository: ${result.error}`,
                     error: true,
                 });
@@ -159,7 +184,7 @@ export const cloneRepoAction: Action = {
             }
         } catch (error) {
             elizaLogger.error(`Failed to clone repository. Error: ${error}`);
-            callback({
+            await callback({
                 text: `Failed to clone repository: ${error.message}`,
                 error: true,
             });
@@ -170,7 +195,9 @@ export const cloneRepoAction: Action = {
         [
             {
                 user: "{{user1}}",
-                content: { text: "Clone this repository: https://github.com/ai16z/eliza" },
+                content: {
+                    text: "Clone this repository: https://github.com/ai16z/eliza",
+                },
             },
             {
                 user: "{{agentName}}",
