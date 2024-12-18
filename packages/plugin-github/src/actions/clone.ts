@@ -6,10 +6,15 @@ import {
     IAgentRuntime,
     Memory,
     State,
+    stringToUuid,
 } from "@ai16z/eliza";
 import fs from "fs";
+import { glob } from "glob";
 import { spawn } from "child_process";
 import path from "path";
+import PostgresSingleton from "../services/pg";
+import { v4 } from "uuid";
+import { createHash } from "crypto";
 
 export type Repo = {
     url: string;
@@ -17,6 +22,8 @@ export type Repo = {
     owner: string;
     localPath: string;
 };
+
+const pgClient = await PostgresSingleton.getInstance().getClient();
 
 export const cloneRepo = async (
     repoUrl: string
@@ -149,26 +156,11 @@ export const cloneRepoAction: Action = {
 
         try {
             const result = await cloneRepo(repoUrl[0]);
-            const embedding = [];
+
+            // if clone success, then create embedding from files in repo
             if (result.success) {
-                // embedding = await embed(
-                //     runtime,
-                //     `Successfully cloned repository: ${repoUrl[0]} at ${result.repo.localPath}`
-                // );
+                await saveRepoToDatabase(result, runtime);
             }
-
-            // await runtime.knowledgeManager.createMemory({
-            //     userId: message.userId,
-            //     agentId: message.agentId,
-            //     roomId: message.roomId,
-            //     embedding,
-
-            //     content: {
-            //         text: result.data || result.error,
-            //         action: "CLONE_REPO",
-            //         repo: result.repo,
-            //     },
-            // });
 
             if (result.success) {
                 await callback({
@@ -224,3 +216,55 @@ export const cloneRepoAction: Action = {
         ],
     ],
 } as Action;
+
+async function saveRepoToDatabase(result, runtime: IAgentRuntime) {
+    // get files by path
+    const envPath = runtime.getSetting("GITHUB_PATH") as string;
+    const searchPath = envPath
+        ? path.join(result.repo.localPath, envPath, "**/*")
+        : path.join(result.repo.localPath, "**/*");
+    // const searchPath = path.join(result.repo.localPath, "**/*");
+    const files = await glob(searchPath, { nodir: true });
+    const newRepo = await pgClient.query(
+        `INSERT INTO repositories(id, name, "localPath", owner, description) VALUES($1, $2, $3, $4, $5) RETURNING *`,
+        [
+            v4(),
+            result.repo.name,
+            result.repo.localPath,
+            result.repo.owner,
+            result.repo.url,
+        ]
+    );
+    for (const file of files) {
+        const relativePath = path.relative(result.repo.localPath, file);
+        const content = await fs.promises.readFile(file, "utf-8");
+        const contentHash = createHash("sha256").update(content).digest("hex");
+
+        const codeFileId = stringToUuid(
+            `github-${result.repo.owner}-${result.repo.name}-${relativePath}`
+        );
+        const foundFile = await pgClient.query(
+            "SELECT * FROM repositories WHERE id = $1",
+            [codeFileId]
+        );
+        if (
+            foundFile.rows.length > 0 &&
+            foundFile.rows[0].contentHash === contentHash
+        ) {
+            continue;
+        }
+
+        const embedding = await embed(runtime, content);
+        await pgClient.query(
+            `INSERT INTO code_files(id, "repositoryId", "name", "relativePath", "embedding", "contentHash") VALUES ( $1, $2, $3, $4, $5, $6)`,
+            [
+                codeFileId,
+                newRepo.rows[0].id,
+                path.basename(file),
+                relativePath,
+                `[${embedding.join(",")}]`,
+                contentHash,
+            ]
+        );
+    }
+}
