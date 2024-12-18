@@ -6,7 +6,9 @@
     "types": "dist/index.d.ts",
     "dependencies": {
         "@ai16z/eliza": "workspace:*",
-        "tsup": "8.3.5"
+        "tsup": "8.3.5",
+        "pg": "8.13.1",
+        "@types/pg": "8.11.10"
     },
     "devDependencies": {
         "eslint": "9.13.0",
