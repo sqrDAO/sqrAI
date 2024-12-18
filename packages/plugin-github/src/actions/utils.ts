@@ -19,7 +19,7 @@ const IGNORED_PATTERNS = [
     ".travis.yml",
 ]
 
-export const getFileStructure = (dir: string, depth: number, fileList: string[] = []) => {
+export const getFileStructure = (dir: string, depth: number, repoPath: string, fileList: string[] = []) => {
     if (depth === 0) {
         return fileList;
     }
@@ -30,9 +30,9 @@ export const getFileStructure = (dir: string, depth: number, fileList: string[] 
         }
         const filePath = path.join(dir, file);
         if (fs.statSync(filePath).isDirectory()) {
-            getFileStructure(filePath, depth - 1, fileList);
+            getFileStructure(filePath, depth - 1, repoPath, fileList);
         } else {
-            fileList.push(filePath);
+            fileList.push(path.relative(repoPath, filePath));
         }
     });
     return fileList;

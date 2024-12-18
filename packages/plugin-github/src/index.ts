@@ -23,6 +23,7 @@ import { getFileStructure, loadFiles } from "./actions/utils";
 import { summarizeRepoAction } from "./actions/summarize";
 import PostgresSingleton from "./services/pg";
 import { fileURLToPath } from "url";
+import { extractRepoNameAndOwner, getRepoByNameAndOwner, queryRelatedCodeFiles } from "./utils"; // Assuming extractRepoNameAndOwner and getRepoByNameAndOwner are functions from the utils
 
 const queryProjectAction: Action = {
     name: "EXPLAIN_PROJECT",
@@ -49,27 +50,18 @@ const queryProjectAction: Action = {
     ) => {
         elizaLogger.log("Explain project request: ", message);
 
-        const embedding = await embed(runtime, message.content.text);
+        const { name: repoName, owner } = await extractRepoNameAndOwner(runtime, message.content.text);
+        if (!repoName || !owner) {
+            callback({
+                text: "I couldn't extract the repository name or owner. Could you please provide the repository details?",
+            });
+            return;
+        }
 
-        // Query the local path from memory
-        // const memory = await runtime.knowledgeManager.searchMemoriesByEmbedding(embedding, {
-        //     roomId: message.roomId,
-        // });
-
-        const memory = [
-            await runtime.knowledgeManager.getMemoryById(
-                "f6de09a2-4b7c-44d7-bc58-c983ad69e9b1"
-            ),
-        ];
-
-        const repoMemory = memory.find(
-            (m) => m.content.action === "CLONE_REPO"
-        );
-        const repo = repoMemory?.content.repo as Repo;
-
+        const repo = await getRepoByNameAndOwner(repoName, owner);
         if (!repo) {
             callback({
-                text: "I couldn't find the repository. Could you please confirm the repository details?",
+                text: "I couldn't find the repository in the database. Could you please confirm the repository details?",
             });
             return;
         }
@@ -94,40 +86,30 @@ const queryProjectAction: Action = {
         let attempts = 0;
         let sufficientKnowledge = false;
 
-        const checkedFiles: string[] = [];
+        let questionEmbedding = await embed(runtime, message.content.text);
+        const checkedFiles: { relativePath: string }[] = await queryRelatedCodeFiles(runtime, repo.id, questionEmbedding);
 
-        while (attempts < 1 && !sufficientKnowledge) {
+        while (attempts < 2 && !sufficientKnowledge) {
+            elizaLogger.log("Related files:", checkedFiles);
             attempts++;
 
-            // get top-5 related knowledge
-            const knowledge =
-                await runtime.knowledgeManager.searchMemoriesByEmbedding(
-                    embedding,
-                    {
-                        roomId: message.roomId,
-                        count: 5,
-                    }
+            if (checkedFiles.length > 0) {
+                const fileContents = await Promise.all(
+                    checkedFiles.map(async (file) => {
+                        try {
+                            const content = await fs.promises.readFile(path.join(repoPath, file.relativePath), "utf-8");
+                            return { relativePath: file.relativePath, content };
+                        } catch (error) {
+                            elizaLogger.error(`Error reading file ${file.relativePath}:`, error);
+                            return { relativePath: file.relativePath, content: "Error reading file" };
+                        }
+                    })
                 );
 
-            elizaLogger.log("Existing Knowledge:", knowledge);
-
-            knowledge.forEach((k) => {
-                const parsedContent = parseJSONObjectFromText(k.content.text);
-                if (
-                    parsedContent &&
-                    parsedContent.path &&
-                    !checkedFiles.includes(parsedContent.path)
-                ) {
-                    checkedFiles.push(parsedContent.path);
-                }
-            });
-            elizaLogger.log("Checked Files:", checkedFiles);
-
-            if (knowledge.length > 0) {
                 const context =
                     `
                     Here is the existing knowledge about the project:
-                    ${knowledge.map((k) => k.content.text).join("\n")}
+                    ${fileContents.map((file) => `Path: ${file.relativePath}\nContent: ${file.content}`).join("\n\n")}
                     
                     TASK: Determine if the existing knowledge is sufficient to answer the following question:
                     ${message.content.text}
@@ -139,22 +121,23 @@ const queryProjectAction: Action = {
                     modelClass: "small",
                 });
 
-                elizaLogger.log("Sufficient Knowledge Response:", response);
+                elizaLogger.log(`Sufficient Knowledge Response: "${response.trim()}" - ${parseBooleanFromText(response.trim())}`);
 
                 // answer anyway
-                if (parseBooleanFromText(response)) {
+                if (parseBooleanFromText(response.trim())) {
                     callback({
-                        text: `I found sufficient information: ${knowledge[0].content.text}`,
+                        text: `I found sufficient information: ${fileContents[0].content}`,
                     });
                     sufficientKnowledge = true;
                     const context = `
                         Here is the existing knowledge about the project:
-                        ${knowledge.map((k) => k.content.text).join("\n")}
+                        ${fileContents.map((file) => `Path: ${file.relativePath}\nContent: ${file.content}`).join("\n\n")}
                         
                         TASK: Answer the following question:
                         ${message.content.text}
 
                         Answer clearly and concisely. Provide references to files or code snippets if necessary.
+                        Code block formatting is supported.
                     `;
 
                     const answer = await generateText({
@@ -171,10 +154,10 @@ const queryProjectAction: Action = {
                 }
             }
 
-            const fileList = getFileStructure(repoPath, 3);
+            const fileList = getFileStructure(repoPath, 3, repoPath);
             elizaLogger.log("File List:", fileList);
             const unreadFiles = fileList.filter(
-                (file) => !checkedFiles.some((f) => f === file)
+                (file) => !checkedFiles.some((f) => f.relativePath === file)
             );
 
             const filesRespond = await generateText({
@@ -199,36 +182,7 @@ const queryProjectAction: Action = {
             callback({
                 text: `I'll read the following files to gather more information: ${filesToRead.join(", ")}`,
             });
-
-            // Read these files and store their embedding
-            // no need repoPath as getFileStructure will return full path
-            const filesContent = loadFiles("", filesToRead);
-            for (const file of filesContent) {
-                checkedFiles.push(file.path);
-                if (!file.content) {
-                    continue;
-                }
-                const embedding = await embed(
-                    runtime,
-                    `
-                    Project: ${repo.owner}\\${repo.name}\n
-                    Path: ${file.path}\n
-                    Content: ${file.content}
-                    `
-                );
-                await runtime.knowledgeManager.createMemory({
-                    userId: message.userId,
-                    agentId: message.agentId,
-                    roomId: message.roomId,
-                    unique: true,
-                    embedding,
-                    content: {
-                        text: file.content,
-                        path: file.path,
-                        action: "READ_FILE",
-                    },
-                });
-            }
+            checkedFiles.push(...filesToRead.map((file) => ({ relativePath: file })))
         }
 
         if (!sufficientKnowledge) {
