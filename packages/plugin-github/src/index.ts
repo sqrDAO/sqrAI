@@ -26,8 +26,14 @@ import { getFileStructure, loadFiles } from "./actions/utils";
 import { summarizeRepoAction } from "./actions/summarize";
 import PostgresSingleton from "./services/pg";
 import { fileURLToPath } from "url";
-import { extractRepoNameAndOwner, getRepoByNameAndOwner, queryRelatedCodeFiles } from "./utils"; // Assuming extractRepoNameAndOwner and getRepoByNameAndOwner are functions from the utils
-import repoApiRouter from './repo_api';
+import {
+    extractRepoNameAndOwner,
+    getRepoByNameAndOwner,
+    queryRelatedCodeFiles,
+} from "./utils"; // Assuming extractRepoNameAndOwner and getRepoByNameAndOwner are functions from the utils
+import repoApiRouter from "./repo_api";
+import { gendocAction } from "./actions/gendoc";
+import { createFileAction } from "./actions/createfile";
 
 const queryProjectAction: Action = {
     name: "EXPLAIN_PROJECT",
@@ -64,7 +70,7 @@ const queryProjectAction: Action = {
         elizaLogger.log("State goal: ", state.goals);
 
         // Combine all recent messages between the user and the agent
-        const combinedMessages = state.recentMessages
+        const combinedMessages = state.recentMessages;
 
         // Ask the LLM to write a better question
         const betterQuestionContext = `
@@ -154,7 +160,7 @@ const queryProjectAction: Action = {
         let attempts = 0;
         let sufficientKnowledge = false;
 
-        let questionEmbedding = await embed(
+        const questionEmbedding = await embed(
             runtime,
             `
             Question: ${questionDetails.question}
@@ -162,7 +168,8 @@ const queryProjectAction: Action = {
             Context: ${questionDetails.context}
             `
         );
-        const checkedFiles: { relativePath: string }[] = await queryRelatedCodeFiles(runtime, repo.id, questionEmbedding);
+        const checkedFiles: { relativePath: string }[] =
+            await queryRelatedCodeFiles(runtime, repo.id, questionEmbedding);
 
         while (attempts < 2 && !sufficientKnowledge) {
             elizaLogger.log("Related files:", checkedFiles);
@@ -172,11 +179,20 @@ const queryProjectAction: Action = {
                 const fileContents = await Promise.all(
                     checkedFiles.map(async (file) => {
                         try {
-                            const content = fs.readFileSync(path.join(repoPath, file.relativePath), "utf-8");
+                            const content = fs.readFileSync(
+                                path.join(repoPath, file.relativePath),
+                                "utf-8"
+                            );
                             return { relativePath: file.relativePath, content };
                         } catch (error) {
-                            elizaLogger.error(`Error reading file ${file.relativePath}:`, error);
-                            return { relativePath: file.relativePath, content: "Error reading file" };
+                            elizaLogger.error(
+                                `Error reading file ${file.relativePath}:`,
+                                error
+                            );
+                            return {
+                                relativePath: file.relativePath,
+                                content: "Error reading file",
+                            };
                         }
                     })
                 );
@@ -199,7 +215,9 @@ const queryProjectAction: Action = {
                     modelClass: "small",
                 });
 
-                elizaLogger.log(`Sufficient Knowledge Response: "${response.trim()}" - ${parseBooleanFromText(response.trim())}`);
+                elizaLogger.log(
+                    `Sufficient Knowledge Response: "${response.trim()}" - ${parseBooleanFromText(response.trim())}`
+                );
 
                 // answer anyway
                 if (parseBooleanFromText(response.trim())) {
@@ -266,7 +284,9 @@ const queryProjectAction: Action = {
             callback({
                 text: `I'll read the following files to gather more information: ${filesToRead.join(", ")}`,
             });
-            checkedFiles.push(...filesToRead.map((file) => ({ relativePath: file })))
+            checkedFiles.push(
+                ...filesToRead.map((file) => ({ relativePath: file }))
+            );
         }
 
         if (!sufficientKnowledge) {
@@ -283,7 +303,9 @@ const queryProjectAction: Action = {
         [
             {
                 user: "{{user1}}",
-                content: { text: "What is the purpose of the project {{project_name}}?" },
+                content: {
+                    text: "What is the purpose of the project {{project_name}}?",
+                },
             },
             {
                 user: "{{agentName}}",
@@ -311,7 +333,9 @@ const queryProjectAction: Action = {
         [
             {
                 user: "{{user1}}",
-                content: { text: "Can you explain the structure of {{project_name}}?" },
+                content: {
+                    text: "Can you explain the structure of {{project_name}}?",
+                },
             },
             {
                 user: "{{agentName}}",
@@ -342,7 +366,13 @@ initDB().then(() => console.log("create db success"));
 export const githubPlugin: Plugin = {
     name: "githubPlugin",
     description: "Plugin for GitHub integration",
-    actions: [cloneRepoAction, summarizeRepoAction, queryProjectAction],
+    actions: [
+        cloneRepoAction,
+        summarizeRepoAction,
+        queryProjectAction,
+        gendocAction,
+        createFileAction,
+    ],
     evaluators: [],
     providers: [],
 };
