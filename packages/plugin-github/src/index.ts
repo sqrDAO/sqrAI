@@ -23,6 +23,8 @@ import { getFileStructure, loadFiles } from "./actions/utils";
 import { summarizeRepoAction } from "./actions/summarize";
 import PostgresSingleton from "./services/pg";
 import { fileURLToPath } from "url";
+import { gendocAction } from "./actions/gendoc";
+import { createFileAction } from "./actions/createfile";
 
 const queryProjectAction: Action = {
     name: "EXPLAIN_PROJECT",
@@ -304,7 +306,13 @@ initDB().then(() => console.log("create db success"));
 export const githubPlugin: Plugin = {
     name: "githubPlugin",
     description: "Plugin for GitHub integration",
-    actions: [cloneRepoAction, summarizeRepoAction, queryProjectAction],
+    actions: [
+        cloneRepoAction,
+        summarizeRepoAction,
+        queryProjectAction,
+        gendocAction,
+        createFileAction,
+    ],
     evaluators: [],
     providers: [],
 };
