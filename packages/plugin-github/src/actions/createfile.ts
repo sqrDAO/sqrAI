@@ -5,6 +5,7 @@ import {
     generateText,
     HandlerCallback,
     IAgentRuntime,
+    knowledge,
     Memory,
     parseJSONObjectFromText,
     State,
@@ -22,6 +23,16 @@ export const createFileAction: Action = {
     handler: async (runtime, message, state, _options, callback) => {
         elizaLogger.log("Creating a file action: ", message);
         // get repo and path from context
+
+        const knowledgeDocument = await runtime.databaseAdapter.getMemories({
+            roomId: message.roomId as `${string}-${string}-${string}-${string}-${string}`,
+            tableName: "documents",
+            agentId: runtime.agentId,
+        });
+        const contextDocument = knowledgeDocument
+            .map((doc) => doc.content.text)
+            .join("\n");
+        state.contextDocument = contextDocument;
         const input = await getPathFileAndContentFromContext(
             runtime,
             message,
@@ -52,16 +63,25 @@ export async function getPathFileAndContentFromContext(
     callback: HandlerCallback
 ): Promise<{ filePath: string; content: string }> {
     const contextTemplate = `
-You are working on a chat with user, and you need to get pathfile and file content within it in order to create local file for user. You need the following information:
-- Path to the file: Provide the path to the file where you want to create the content.
-- Content: Provide the content that you want to write to the file.
+You are working in a conversational context with a user. Your task is to extract and format information necessary to create a local file based on the user's input. To achieve this, look for the following details in the conversation:
 
----
-Current context:
+1. **Path to the File**: The directory or file path where the user wants the file to be created.  
+2. **Content**: The content the user wants to include in the file.
+
+### Context of Conversation:
 {{recentMessages}}
----
-Response format should be formatted in JSON block like this: 
-{ "content": "hello world", "filePath": "src/utils" }
+
+Some file content found in the conversation:
+{{contextDocument}}
+
+### Instructions:
+- If both the file path and content are provided by the user, output them in the specified JSON format.
+- If any required information is missing, ask a clarifying question to ensure both the path and content are captured accurately.
+- The output must strictly follow this JSON format:
+{
+  "filePath": "example/path/to/file",
+  "content": "Example content to write to the file."
+}
 `;
     const context2 = await composeContext({
         state: {
