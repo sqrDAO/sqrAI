@@ -7,6 +7,8 @@ import {
     State,
     composeContext,
     elizaLogger,
+    embed,
+    embeddingZeroVector,
     generateText,
     knowledge,
     parseJSONObjectFromText,
@@ -56,6 +58,14 @@ export const gendocAction: Action = {
             return;
         }
 
+        // callback({
+        //     text: `Repository is found, info:
+        //     name: ${foundRepo.rows[0].name}
+        //     owner: ${foundRepo.rows[0].owner}
+        //     localPath: ${foundRepo.rows[0].localPath}
+        //     description: ${foundRepo.rows[0].description}
+        //     `,
+        // });
         const searchPath = path.join(
             foundRepo.rows[0].localPath,
             input.folderPath,
@@ -110,31 +120,48 @@ Generate a concise and well-formatted README.md file in markdown syntax, ensurin
             context: context,
             modelClass: "small",
         });
-        v4();
-        await knowledge.set(
-            runtime as AgentRuntime,
-            {
-                id: v4() as `${string}-${string}-${string}-${string}-${string}`,
-                content: {
-                    text: resultReadme,
-                },
-            },
-            384
-        );
+        // const content = { text: resultReadme };
+        const embedding = await embed(runtime, resultReadme);
+        await runtime.documentsManager.createMemory({
+            id: v4() as `${string}-${string}-${string}-${string}-${string}`,
+            content: { text: resultReadme },
+            agentId: runtime.agentId,
+            roomId: message.roomId,
+            userId: message.userId,
+            createdAt: Date.now(),
+            embedding: embedding,
+        });
+        // await knowledge.set(runtime as AgentRuntime, {
+        //     id: v4() as `${string}-${string}-${string}-${string}-${string}`,
+        //     content: {
+        //         text: resultReadme,
+        //     },
+        // });
+
+        // const newState = await runtime.composeState(message, {
+        //     fileContent: resultReadme,
+        // });
+
+        // _state.fileContent = resultReadme;
+        // if (!_state) {
+        //     _state = (await runtime.composeState(message, {
+        //         fileContent: resultReadme,
+        //     })) as State;
+        // } else {
+        //     _state = await runtime.updateRecentMessageState(_state);
+        // }
+        // _state = await runtime.updateRecentMessageState(newState);
 
         // await runtime.processActions("", "CREATE_FILE");
-        callback({
-            text: `Create file README.md with the following content:\n${resultReadme} on path 
-            ${path.join(foundRepo.rows[0].localPath, "agent-gen-doc")}`,
-        });
+        // callback({
+        //     text: `Create file README.md with the following content:\n${resultReadme} on path
+        //     ${path.join(foundRepo.rows[0].localPath, "agent-gen-doc")}`,
+        // });
 
-        return callback({
-            text: resultReadme,
-        });
-        // const envPath = runtime.getSetting("GITHUB_PATH_GENDOC") as string;
-        // const searchPath = envPath
-        //     ? path.join(result.repo.localPath, envPath, "**/*")
-        //     : path.join(result.repo.localPath, "**/*");
+        const response = {
+            text: `Here is the generated file content from your codes:\n${resultReadme}`,
+        };
+        callback(response);
     },
     examples: [],
 };
