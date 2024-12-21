@@ -44,7 +44,7 @@ export async function queryRelatedCodeFiles(runtime: IAgentRuntime, repoId: stri
       `SELECT * FROM code_files 
        WHERE "repositoryId" = $1 
        ORDER BY embedding <-> $2 
-       LIMIT 5`,
+       LIMIT 10`,
       [repoId, `[${questionEmbedding.join(",")}]`]
     );
     console.log(`Found ${result.rows.length} related code files`);

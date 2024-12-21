@@ -1,11 +1,14 @@
 import {
+    GoalStatus,
     booleanFooter,
+    createGoal,
     elizaLogger,
     embed,
     parseBooleanFromText,
     parseJSONObjectFromText,
     parseJsonArrayFromText,
     stringArrayFooter,
+    updateGoal,
 } from "@ai16z/eliza";
 import {
     Action,
@@ -36,21 +39,69 @@ const queryProjectAction: Action = {
         "EXPLAIN_PROJECT",
     ],
     description:
-        "Explain how a project works or provide information such as usage or purpose of a project",
+        // "Explain how a project works or provide information such as usage or purpose of a project",
+        `Provide a clear and detailed explanation of how a project functions,
+        including its purpose, usage instructions, or technical details.
+        This may involve explaining the project's goals, key components, implementation,
+        or guiding the user on how to utilize or search for specific features or code within the project.
+        Provide accurate and relevant information by analyzing the project's codebase or documentation.
+        `,
     validate: async (runtime: IAgentRuntime, _message: Memory) => {
         elizaLogger.log("Validating query project request");
+        elizaLogger.log("Message:", _message);
         return true;
     },
     handler: async (
         runtime: IAgentRuntime,
         message: Memory,
-        _state: State,
+        state: State,
         _options: any,
         callback: HandlerCallback
     ) => {
         elizaLogger.log("Explain project request: ", message);
+        elizaLogger.log("State message: ", state.recentMessages);
+        elizaLogger.log("State goal: ", state.goals);
 
-        const { name: repoName, owner } = await extractRepoNameAndOwner(runtime, message.content.text);
+        // Combine all recent messages between the user and the agent
+        const combinedMessages = state.recentMessages
+
+        // Ask the LLM to write a better question
+        const betterQuestionContext = `
+            Here are the recent messages between the user and the agent:
+            ${combinedMessages}
+
+            TASK: Write a better question that combines all the recent messages.
+            Take into account the context of the conversation and the user's intent.
+            Give higher priority to users' messages.
+            Include any relevant details or keywords that may help in answering the question.
+
+            FORMAT:
+            \`\`\`json
+            {
+            "repository": "owner/repo-name",
+            "question": "What is the purpose of the project?",
+            "context": "Any additional context or details that may be relevant."
+            }
+            \`\`\`
+        `;
+
+        const betterQuestion = await generateText({
+            runtime,
+            context: betterQuestionContext,
+            modelClass: "small",
+        });
+
+        elizaLogger.log("Better Question: ", betterQuestion.trim());
+        const questionDetails = parseJSONObjectFromText(betterQuestion.trim());
+
+        if (!questionDetails.repository || !questionDetails.question) {
+            callback({
+                text: "I couldn't get the necessary details to answer the question. Could you please provide the repository and the question?",
+            });
+            return;
+        }
+        const [owner, repoName] = questionDetails.repository.split("/");
+
         if (!repoName || !owner) {
             callback({
                 text: "I couldn't extract the repository name or owner. Could you please provide the repository details?",
@@ -65,6 +116,22 @@ const queryProjectAction: Action = {
             });
             return;
         }
+
+        // await createGoal({
+        //     runtime,
+        //     goal: {
+        //         roomId: state.roomId,
+        //         userId: state.userId,
+        //         name: `Working on Project: ${owner}/${repoName}`,
+        //         status: GoalStatus.IN_PROGRESS,
+        //         objectives: [
+        //             {
+        //                 description: "Understand the project's code base to answer the user's question",
+        //                 completed: false
+        //             }
+        //         ]
+        //     },
+        // });
 
         const repoPath = repo.localPath;
 
@@ -86,7 +153,14 @@ const queryProjectAction: Action = {
         let attempts = 0;
         let sufficientKnowledge = false;
 
-        let questionEmbedding = await embed(runtime, message.content.text);
+        let questionEmbedding = await embed(
+            runtime,
+            `
+            Question: ${questionDetails.question}
+            Repository: ${questionDetails.repository}
+            Context: ${questionDetails.context}
+            `
+        );
         const checkedFiles: { relativePath: string }[] = await queryRelatedCodeFiles(runtime, repo.id, questionEmbedding);
 
         while (attempts < 2 && !sufficientKnowledge) {
@@ -110,9 +184,12 @@ const queryProjectAction: Action = {
                     `
                     Here is the existing knowledge about the project:
                     ${fileContents.map((file) => `Path: ${file.relativePath}\nContent: ${file.content}`).join("\n\n")}
+
+                    CONTEXT:
+                    ${questionDetails.context}
                     
                     TASK: Determine if the existing knowledge is sufficient to answer the following question:
-                    ${message.content.text}
+                    ${questionDetails.question}
                 ` + booleanFooter;
 
                 const response = await generateText({
@@ -132,9 +209,12 @@ const queryProjectAction: Action = {
                     const context = `
                         Here is the existing knowledge about the project:
                         ${fileContents.map((file) => `Path: ${file.relativePath}\nContent: ${file.content}`).join("\n\n")}
+
+                        CONTEXT:
+                        ${questionDetails.context}
                         
                         TASK: Answer the following question:
-                        ${message.content.text}
+                        ${questionDetails.question}
 
                         Answer clearly and concisely. Provide references to files or code snippets if necessary.
                         Code block formatting is supported.
@@ -164,9 +244,12 @@ const queryProjectAction: Action = {
                 runtime,
                 context:
                     `
+                    CONTEXT:
+                    ${questionDetails.context}
+                    ---
                     Determine up to 5 files to read to gather more information about the project.
                     The file should contain information that can help answer the question:
-                    ${message.content.text}
+                    ${questionDetails.question} 
                     ---
                     List of potential files:
                     ${unreadFiles.join("\n")}
@@ -199,12 +282,12 @@ const queryProjectAction: Action = {
         [
             {
                 user: "{{user1}}",
-                content: { text: "What is the purpose of this project?" },
+                content: { text: "What is the purpose of the project {{project_name}}?" },
             },
             {
                 user: "{{agentName}}",
                 content: {
-                    text: "I'll look into the project to find out.",
+                    text: "I'll look into the project code to find out.",
                     action: "QUERY_PROJECT",
                 },
             },
@@ -213,7 +296,7 @@ const queryProjectAction: Action = {
             {
                 user: "{{user1}}",
                 content: {
-                    text: "How to use this project to build a web application?",
+                    text: "How to use {{project_name}} to build a web application?",
                 },
             },
             {
@@ -227,7 +310,7 @@ const queryProjectAction: Action = {
         [
             {
                 user: "{{user1}}",
-                content: { text: "Can you explain the project structure?" },
+                content: { text: "Can you explain the structure of {{project_name}}?" },
             },
             {
                 user: "{{agentName}}",
