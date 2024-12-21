@@ -38,10 +38,11 @@ async function createPRInfo(
     const template = `
 You are about to create a pull request from branch main to main in ${repoSourcesKnowledge.content.sourceRepo} to create an readme file for a service. Here are readme details:
 ${repoSourcesKnowledge.content.text}\n\n\n
-You must generate for me a commit message, a title for the PR, and a description for the PR. Please provide them in the following JSON format:
+You must generate for me a new branch name, a commit message, a title for the PR, and a description for the PR. Please provide them in the following JSON format:
 {
     "repo": "${repoSourcesKnowledge.content.repoName}",
     "owner": "${repoSourcesKnowledge.content.owner}",
+    "newBranch": "docs/abc"
     "commitMessage": "Create readme file for service abc",
     "title": "Create a readme file for service abc",
     "description": "This PR creates a readme file for the service"
@@ -86,16 +87,22 @@ export const createPRAction: Action = {
         console.log(prDetail);
         const git = simpleGit(repoSourcesKnowledge.content.sourceRepo);
         const currentBranch = (await git.status()).current;
+
+        const newBranch = prDetail.newBranch;
+
+        // Checkout new branch from current branch
+        await git.checkoutBranch(newBranch, currentBranch);
+
         await git.add(".");
         await git.commit(prDetail.title);
-        await git.push("origin", currentBranch);
+        await git.push("origin", newBranch);
         // Create PR
         const pr = await octokit.pulls.create({
             owner: prDetail.owner,
             repo: prDetail.repo,
             title: prDetail.title,
             body: prDetail.description,
-            head: currentBranch,
+            head: newBranch,
             base: currentBranch,
         });
 
