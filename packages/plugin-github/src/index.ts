@@ -34,6 +34,7 @@ import {
 import repoApiRouter from "./repo_api";
 import { gendocAction } from "./actions/gendoc";
 import { createFileAction } from "./actions/createfile";
+import { createPRAction } from "./actions/createPR";
 
 const queryProjectAction: Action = {
     name: "EXPLAIN_PROJECT",
@@ -372,6 +373,7 @@ export const githubPlugin: Plugin = {
         queryProjectAction,
         gendocAction,
         createFileAction,
+        createPRAction,
     ],
     evaluators: [],
     providers: [],
