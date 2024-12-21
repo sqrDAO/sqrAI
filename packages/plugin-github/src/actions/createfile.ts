@@ -5,7 +5,6 @@ import {
     generateText,
     HandlerCallback,
     IAgentRuntime,
-    knowledge,
     Memory,
     parseJSONObjectFromText,
     State,
@@ -20,7 +19,13 @@ export const createFileAction: Action = {
     validate: async (_runtime, _message) => {
         return true;
     },
-    handler: async (runtime, message, state, _options, callback) => {
+    handler: async (
+        runtime: IAgentRuntime,
+        message: Memory,
+        state: State,
+        _options: any,
+        callback: HandlerCallback
+    ) => {
         elizaLogger.log("Creating a file action: ", message);
         // get repo and path from context
 
@@ -30,7 +35,10 @@ export const createFileAction: Action = {
             agentId: runtime.agentId,
         });
         const contextDocument = knowledgeDocument
-            .map((doc) => doc.content.text)
+            .map(
+                (doc) =>
+                    `source folder: ${doc.content.source} \n content: ${doc.content.text} \n source repo: ${doc.content.sourceRepo}`
+            )
             .join("\n");
         state.contextDocument = contextDocument;
         const input = await getPathFileAndContentFromContext(
@@ -65,7 +73,7 @@ export async function getPathFileAndContentFromContext(
     const contextTemplate = `
 You are working in a conversational context with a user. Your task is to extract and format information necessary to create a local file based on the user's input. To achieve this, look for the following details in the conversation:
 
-1. **Path to the File**: The directory or file path where the user wants the file to be created.  
+1. **Path to the File**: The directory or file path where the user wants the file to be created. Default you can use folder input in file content  
 2. **Content**: The content the user wants to include in the file.
 
 ### Context of Conversation:
@@ -76,6 +84,7 @@ Some file content found in the conversation:
 
 ### Instructions:
 - If both the file path and content are provided by the user, output them in the specified JSON format.
+- If no file path is provided, you can use source folder from the context document.
 - If any required information is missing, ask a clarifying question to ensure both the path and content are captured accurately.
 - The output must strictly follow this JSON format:
 {

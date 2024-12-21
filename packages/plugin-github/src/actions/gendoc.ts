@@ -1,6 +1,5 @@
 import {
     Action,
-    AgentRuntime,
     HandlerCallback,
     IAgentRuntime,
     Memory,
@@ -8,11 +7,8 @@ import {
     composeContext,
     elizaLogger,
     embed,
-    embeddingZeroVector,
     generateText,
-    knowledge,
     parseJSONObjectFromText,
-    stringToUuid,
 } from "@ai16z/eliza";
 import path from "path";
 import PostgresSingleton from "../services/pg";
@@ -53,19 +49,11 @@ export const gendocAction: Action = {
         );
         if (foundRepo.rows.length === 0) {
             callback({
-                text: `Repository ${input.repoName} not found. Please provide a valid repository name.`,
+                text: `Repository ${input.repoName} not found. Please clone it.`,
             });
             return;
         }
 
-        // callback({
-        //     text: `Repository is found, info:
-        //     name: ${foundRepo.rows[0].name}
-        //     owner: ${foundRepo.rows[0].owner}
-        //     localPath: ${foundRepo.rows[0].localPath}
-        //     description: ${foundRepo.rows[0].description}
-        //     `,
-        // });
         const searchPath = path.join(
             foundRepo.rows[0].localPath,
             input.folderPath,
@@ -121,42 +109,32 @@ Generate a concise and well-formatted README.md file in markdown syntax, ensurin
             modelClass: "small",
         });
         // const content = { text: resultReadme };
-        const embedding = await embed(runtime, resultReadme);
+        const embedding = await embed(
+            runtime,
+            `${resultReadme}\n Source input: ${path.join(
+                foundRepo.rows[0].localPath,
+                input.folderPath
+            )} \n Source Repo: ${foundRepo.rows[0].localPath}
+            \n Repo name: ${foundRepo.rows[0].name} \n Owner: ${foundRepo.rows[0].owner}`
+        );
         await runtime.documentsManager.createMemory({
             id: v4() as `${string}-${string}-${string}-${string}-${string}`,
-            content: { text: resultReadme },
+            content: {
+                text: resultReadme,
+                source: path.join(
+                    foundRepo.rows[0].localPath,
+                    input.folderPath
+                ),
+                sourceRepo: foundRepo.rows[0].localPath,
+                repoName: foundRepo.rows[0].name,
+                owner: foundRepo.rows[0].owner,
+            },
             agentId: runtime.agentId,
             roomId: message.roomId,
             userId: message.userId,
             createdAt: Date.now(),
             embedding: embedding,
         });
-        // await knowledge.set(runtime as AgentRuntime, {
-        //     id: v4() as `${string}-${string}-${string}-${string}-${string}`,
-        //     content: {
-        //         text: resultReadme,
-        //     },
-        // });
-
-        // const newState = await runtime.composeState(message, {
-        //     fileContent: resultReadme,
-        // });
-
-        // _state.fileContent = resultReadme;
-        // if (!_state) {
-        //     _state = (await runtime.composeState(message, {
-        //         fileContent: resultReadme,
-        //     })) as State;
-        // } else {
-        //     _state = await runtime.updateRecentMessageState(_state);
-        // }
-        // _state = await runtime.updateRecentMessageState(newState);
-
-        // await runtime.processActions("", "CREATE_FILE");
-        // callback({
-        //     text: `Create file README.md with the following content:\n${resultReadme} on path
-        //     ${path.join(foundRepo.rows[0].localPath, "agent-gen-doc")}`,
-        // });
 
         const response = {
             text: `Here is the generated file content from your codes:\n${resultReadme}`,
