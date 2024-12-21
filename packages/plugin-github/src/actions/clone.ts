@@ -9,7 +9,6 @@ import {
     stringToUuid,
 } from "@ai16z/eliza";
 import fs from "fs";
-import { glob } from "glob";
 import { spawn } from "child_process";
 import path from "path";
 import PostgresSingleton from "../services/pg";
@@ -22,8 +21,6 @@ export type Repo = {
     owner: string;
     localPath: string;
 };
-
-const pgClient = await PostgresSingleton.getInstance().getClient();
 
 export const cloneRepo = async (
     repoUrl: string
@@ -101,6 +98,23 @@ export const cloneRepo = async (
             error: error.message || "Unknown error occurred",
         };
     }
+};
+
+async function getAllFiles(dirPath: string, arrayOfFiles: string[] = []): Promise<string[]> {
+  const files = await fs.promises.readdir(dirPath);
+
+  for (const file of files) {
+      const filePath = path.join(dirPath, file);
+      const stat = await fs.promises.stat(filePath);
+
+      if (stat.isDirectory()) {
+          arrayOfFiles = await getAllFiles(filePath, arrayOfFiles);
+      } else {
+          arrayOfFiles.push(filePath);
+      }
+  }
+
+  return arrayOfFiles;
 };
 
 export const cloneRepoAction: Action = {
@@ -218,13 +232,16 @@ export const cloneRepoAction: Action = {
 } as Action;
 
 async function saveRepoToDatabase(result, runtime: IAgentRuntime) {
+    const pgClient = await PostgresSingleton.getInstance().getClient();
+
     // get files by path
     const envPath = runtime.getSetting("GITHUB_PATH") as string;
     const searchPath = envPath
         ? path.join(result.repo.localPath, envPath, "**/*")
         : path.join(result.repo.localPath, "**/*");
     // const searchPath = path.join(result.repo.localPath, "**/*");
-    const files = await glob(searchPath, { nodir: true });
+
+    const files = await getAllFiles(searchPath);
     const newRepo = await pgClient.query(
         `INSERT INTO repositories(id, name, "localPath", owner, description) VALUES($1, $2, $3, $4, $5) RETURNING *`,
         [
@@ -237,7 +254,7 @@ async function saveRepoToDatabase(result, runtime: IAgentRuntime) {
     );
     for (const file of files) {
         const relativePath = path.relative(result.repo.localPath, file);
-        const content = await fs.promises.readFile(file, "utf-8");
+        const content = fs.readFileSync(file, "utf-8");
         const contentHash = createHash("sha256").update(content).digest("hex");
 
         const codeFileId = stringToUuid(

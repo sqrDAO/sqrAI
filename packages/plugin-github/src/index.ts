@@ -171,7 +171,7 @@ const queryProjectAction: Action = {
                 const fileContents = await Promise.all(
                     checkedFiles.map(async (file) => {
                         try {
-                            const content = await fs.promises.readFile(path.join(repoPath, file.relativePath), "utf-8");
+                            const content = fs.readFileSync(path.join(repoPath, file.relativePath), "utf-8");
                             return { relativePath: file.relativePath, content };
                         } catch (error) {
                             elizaLogger.error(`Error reading file ${file.relativePath}:`, error);
@@ -187,7 +187,7 @@ const queryProjectAction: Action = {
 
                     CONTEXT:
                     ${questionDetails.context}
-                    
+
                     TASK: Determine if the existing knowledge is sufficient to answer the following question:
                     ${questionDetails.question}
                 ` + booleanFooter;
@@ -212,7 +212,7 @@ const queryProjectAction: Action = {
 
                         CONTEXT:
                         ${questionDetails.context}
-                        
+
                         TASK: Answer the following question:
                         ${questionDetails.question}
 
@@ -249,7 +249,7 @@ const queryProjectAction: Action = {
                     ---
                     Determine up to 5 files to read to gather more information about the project.
                     The file should contain information that can help answer the question:
-                    ${questionDetails.question} 
+                    ${questionDetails.question}
                     ---
                     List of potential files:
                     ${unreadFiles.join("\n")}

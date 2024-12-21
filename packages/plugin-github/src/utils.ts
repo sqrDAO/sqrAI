@@ -41,9 +41,9 @@ export async function queryRelatedCodeFiles(runtime: IAgentRuntime, repoId: stri
   const pgClient = await PostgresSingleton.getInstance().getClient();
   try {
     const result = await pgClient.query(
-      `SELECT * FROM code_files 
-       WHERE "repositoryId" = $1 
-       ORDER BY embedding <-> $2 
+      `SELECT * FROM code_files
+       WHERE "repositoryId" = $1
+       ORDER BY embedding <-> $2
        LIMIT 10`,
       [repoId, `[${questionEmbedding.join(",")}]`]
     );
