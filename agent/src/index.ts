@@ -55,7 +55,7 @@ import { suiPlugin } from "@ai16z/plugin-sui";
 import { TEEMode, teePlugin } from "@ai16z/plugin-tee";
 import { tonPlugin } from "@ai16z/plugin-ton";
 import { zksyncEraPlugin } from "@ai16z/plugin-zksync-era";
-import { githubPlugin } from "@ai16z/plugin-github";
+import { githubPlugin } from "@sqrdao/plugin-github";
 
 import Database from "better-sqlite3";
 import fs from "fs";
@@ -216,6 +216,11 @@ export function getTokenForProvider(
     character: Character
 ): string {
     switch (provider) {
+        case ModelProviderName.GOOGLE:
+            return (
+                character.settings?.secrets?.GOOGLE_GENERATIVE_AI_API_KEY ||
+                settings.GOOGLE_GENERATIVE_AI_API_KEY
+            );
         // no key needed for llama_local
         case ModelProviderName.LLAMALOCAL:
             return "";

@@ -10,7 +10,6 @@ export default defineConfig({
         "dotenv",
         "fs",
         "path",
-        "glob",
         "@reflink/reflink",
         "https",
         "http",
