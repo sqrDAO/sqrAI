@@ -56,3 +56,16 @@ export async function queryRelatedCodeFiles(runtime: IAgentRuntime, repoId: stri
     pgClient.release();
   }
 }
+
+export async function getAllRepositories(): Promise<any[]> {
+  const pgClient = await PostgresSingleton.getInstance().getClient();
+  try {
+    const result = await pgClient.query('SELECT * FROM repositories');
+    return result.rows;
+  } catch (error) {
+    console.error("Error querying all repositories:", error);
+    throw error;
+  } finally {
+    pgClient.release();
+  }
+}

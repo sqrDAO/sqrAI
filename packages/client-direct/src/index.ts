@@ -19,6 +19,8 @@ import { settings } from "@ai16z/eliza";
 import { createApiRouter } from "./api.ts";
 import * as fs from "fs";
 import * as path from "path";
+import { repoApiRouter } from "@sqrdao/plugin-github";
+
 const upload = multer({ storage: multer.memoryStorage() });
 
 export const messageHandlerTemplate =
@@ -68,6 +70,7 @@ export class DirectClient {
 
         const apiRouter = createApiRouter(this.agents, this);
         this.app.use(apiRouter);
+        this.app.use(repoApiRouter);
 
         // Define an interface that extends the Express Request interface
         interface CustomRequest extends ExpressRequest {

@@ -5,6 +5,7 @@
   "type": "module",
   "types": "dist/index.d.ts",
   "dependencies": {
+    "@sqrdao/plugin-github": "workspace:*",
     "@ai16z/eliza": "workspace:*",
     "@ai16z/plugin-image-generation": "workspace:*",
     "@types/body-parser": "1.19.5",

@@ -27,6 +27,7 @@ import { summarizeRepoAction } from "./actions/summarize";
 import PostgresSingleton from "./services/pg";
 import { fileURLToPath } from "url";
 import { extractRepoNameAndOwner, getRepoByNameAndOwner, queryRelatedCodeFiles } from "./utils"; // Assuming extractRepoNameAndOwner and getRepoByNameAndOwner are functions from the utils
+import repoApiRouter from './repo_api';
 
 const queryProjectAction: Action = {
     name: "EXPLAIN_PROJECT",
@@ -345,3 +346,5 @@ export const githubPlugin: Plugin = {
     evaluators: [],
     providers: [],
 };
+
+export { repoApiRouter };
