@@ -1,17 +1,38 @@
-import { Action, elizaLogger, embed, generateText, HandlerCallback, IAgentRuntime, Memory, parseJSONObjectFromText, State } from "@ai16z/eliza";
-import { convertFileStructureToText, getFileStructure, loadFiles } from "./utils";
+import {
+    Action,
+    elizaLogger,
+    embed,
+    generateText,
+    HandlerCallback,
+    IAgentRuntime,
+    Memory,
+    parseJSONObjectFromText,
+    State,
+} from "@ai16z/eliza";
+import {
+    convertFileStructureToText,
+    getFileStructure,
+    loadFiles,
+} from "./utils";
 import { Repo } from "./clone";
 
-const summarizeRepo = async (repoPath: string, runtime: IAgentRuntime, message: Memory) => {
+const summarizeRepo = async (
+    repoPath: string,
+    runtime: IAgentRuntime,
+    message: Memory
+) => {
     elizaLogger.log("Message:", message);
     try {
-        const fileList = getFileStructure(repoPath, 4);
-        const fileStructureText = convertFileStructureToText(fileList, repoPath);
+        const fileList = getFileStructure(repoPath, 4, repoPath);
+        const fileStructureText = convertFileStructureToText(
+            fileList,
+            repoPath
+        );
 
         const context = `
             Here is the file structure of a GitHub repository:
             ${fileStructureText}
-            
+
             TASK: extract the following information:
             - Programming language(s)
             - Framework(s)
@@ -24,11 +45,11 @@ const summarizeRepo = async (repoPath: string, runtime: IAgentRuntime, message: 
                 "programmingLanguages": ["Python", "JavaScript"],
                 "frameworks": ["React", "Flask"],
                 "documentationFiles": ["README.md"],
-                "importantFiles": ["config.json", "Dockerfile", "requirements.txt", "package.json"]     
+                "importantFiles": ["config.json", "Dockerfile", "requirements.txt", "package.json"]
             }
             \`\`\`
             Keep the response short, do not list everything, only list the important ones.
-            
+
             Additional context from user's message: ${message.content.text}
         `;
 
@@ -54,16 +75,21 @@ const summarizeRepo = async (repoPath: string, runtime: IAgentRuntime, message: 
     }
 };
 
-const generateRepoSummary = async (repo: Repo, runtime: IAgentRuntime, message: Memory, files: string[]) => {
+const generateRepoSummary = async (
+    repo: Repo,
+    runtime: IAgentRuntime,
+    message: Memory,
+    files: string[]
+) => {
     elizaLogger.log("Generating repository summary:", message);
     try {
         const importantFiles = loadFiles(repo.localPath, files);
 
         const context = `
             Here is the file structure of a GitHub repository:
-           
-            ${importantFiles.map(file => `File: ${file.path}\nContent:\n${file.content}`).join('\n\n')}
-            
+
+            ${importantFiles.map((file) => `File: ${file.path}\nContent:\n${file.content}`).join("\n\n")}
+
             TASK: extract the following information:
             - What is this repository about
             - How this was supposed to be used
@@ -71,7 +97,7 @@ const generateRepoSummary = async (repo: Repo, runtime: IAgentRuntime, message: 
             - Why this repo was made
 
             Here are some important files:
-            ${importantFiles.map(file => `File: ${file.path}\nContent:\n${file.content}`).join('\n\n')}
+            ${importantFiles.map((file) => `File: ${file.path}\nContent:\n${file.content}`).join("\n\n")}
 
             Answer in JSON format string. For example:
             \`\`\`json
@@ -83,7 +109,7 @@ const generateRepoSummary = async (repo: Repo, runtime: IAgentRuntime, message: 
             }
             \`\`\`
             Keep the response concise and to the point, from 100 to 200 words.
-            
+
             Additional context from user's message: ${message.content.text}
         `;
 
@@ -118,7 +144,8 @@ export const summarizeRepoAction: Action = {
         "GIT_SUMMARY",
         "SUMMARIZE_GIT_REPO",
     ],
-    description: "Summarize or improve a summarization of a cloned GitHub repository",
+    description:
+        "Summarize or improve a summarization of a cloned GitHub repository",
     validate: async (runtime: IAgentRuntime, _message: Memory) => {
         elizaLogger.log("Validating summarize repo request");
         // TODO: what should we verify before summarizing a repo?
@@ -137,11 +164,16 @@ export const summarizeRepoAction: Action = {
         const embedding = await embed(runtime, message.content.text);
 
         // Query the local path from memory
-        const memory = await runtime.knowledgeManager.searchMemoriesByEmbedding(embedding, {
-            roomId: message.roomId,
-        });
+        const memory = await runtime.knowledgeManager.searchMemoriesByEmbedding(
+            embedding,
+            {
+                roomId: message.roomId,
+            }
+        );
 
-        const repoMemory = memory.find((m) => m.content.action === "CLONE_REPO");
+        const repoMemory = memory.find(
+            (m) => m.content.action === "CLONE_REPO"
+        );
         const repo = repoMemory?.content.repo as Repo;
 
         if (!repo) {
@@ -178,7 +210,7 @@ export const summarizeRepoAction: Action = {
                 return;
             }
 
-            // const summaryText = `Summary of the repository ${repo.name}: ${JSON.stringify(result.data)}`; 
+            // const summaryText = `Summary of the repository ${repo.name}: ${JSON.stringify(result.data)}`;
             // const summaryEmbedding = await embed(runtime, summaryText);
 
             // await runtime.knowledgeManager.createMemory({
@@ -205,7 +237,12 @@ export const summarizeRepoAction: Action = {
                 });
             }
 
-            const contentSummaryResult = await generateRepoSummary(repo, runtime, message, result.data.importantFiles);
+            const contentSummaryResult = await generateRepoSummary(
+                repo,
+                runtime,
+                message,
+                result.data.importantFiles
+            );
 
             if (!contentSummaryResult.success) {
                 callback({
@@ -216,7 +253,10 @@ export const summarizeRepoAction: Action = {
             }
 
             const contentSummaryText = `Summary of the repository ${repo.name}: ${JSON.stringify(contentSummaryResult.data)}`;
-            const contentSummaryEmbedding = await embed(runtime, contentSummaryText);
+            const contentSummaryEmbedding = await embed(
+                runtime,
+                contentSummaryText
+            );
 
             await runtime.knowledgeManager.createMemory({
                 userId: message.userId,
@@ -227,22 +267,22 @@ export const summarizeRepoAction: Action = {
                     text: contentSummaryText,
                     action: "SUMMARIZE_REPO",
                     repo,
-                    summary: result.data
-                }
+                    summary: result.data,
+                },
             });
 
             callback({
                 text: contentSummaryResult.data.purpose,
             });
         } catch (error) {
-            elizaLogger.error(`Failed to summarize repository. Error: ${error}`);
+            elizaLogger.error(
+                `Failed to summarize repository. Error: ${error}`
+            );
             callback({
                 text: `Failed to summarize repository: ${error.message}`,
                 error: true,
             });
         }
     },
-    examples: [
-
-    ],
+    examples: [],
 } as Action;

@@ -34,7 +34,7 @@ async function createPRInfo(
     runtime: IAgentRuntime,
     message: Memory,
     repoSourcesKnowledge: Memory
-): any {
+): Promise<any> {
     const template = `
 You are about to create a pull request from branch main to main in ${repoSourcesKnowledge.content.sourceRepo} to create an readme file for a service. Here are readme details:
 ${repoSourcesKnowledge.content.text}\n\n\n

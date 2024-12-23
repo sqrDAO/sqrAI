@@ -100,22 +100,25 @@ export const cloneRepo = async (
     }
 };
 
-async function getAllFiles(dirPath: string, arrayOfFiles: string[] = []): Promise<string[]> {
-  const files = await fs.promises.readdir(dirPath);
+export async function getAllFiles(
+    dirPath: string,
+    arrayOfFiles: string[] = []
+): Promise<string[]> {
+    const files = await fs.promises.readdir(dirPath);
 
-  for (const file of files) {
-      const filePath = path.join(dirPath, file);
-      const stat = await fs.promises.stat(filePath);
+    for (const file of files) {
+        const filePath = path.join(dirPath, file);
+        const stat = await fs.promises.stat(filePath);
 
-      if (stat.isDirectory()) {
-          arrayOfFiles = await getAllFiles(filePath, arrayOfFiles);
-      } else {
-          arrayOfFiles.push(filePath);
-      }
-  }
+        if (stat.isDirectory()) {
+            arrayOfFiles = await getAllFiles(filePath, arrayOfFiles);
+        } else {
+            arrayOfFiles.push(filePath);
+        }
+    }
 
-  return arrayOfFiles;
-};
+    return arrayOfFiles;
+}
 
 export const cloneRepoAction: Action = {
     name: "CLONE_REPO",

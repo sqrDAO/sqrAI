@@ -12,11 +12,11 @@ import {
 } from "@ai16z/eliza";
 import path from "path";
 import PostgresSingleton from "../services/pg";
-import { glob } from "glob";
 import fs from "fs";
 import { v4 } from "uuid";
+import { getAllFiles } from "./clone";
 
-const pgClient = await PostgresSingleton.getInstance().getClient();
+
 
 export const gendocAction: Action = {
     name: "GEN_DOC",
@@ -32,6 +32,7 @@ export const gendocAction: Action = {
         _options: any,
         callback: HandlerCallback
     ) => {
+        const pgClient = await PostgresSingleton.getInstance().getClient();
         elizaLogger.log("Generating documentation for code: ", message);
         const input = await getRepoAndPathFromContext(
             runtime,
@@ -59,7 +60,8 @@ export const gendocAction: Action = {
             input.folderPath,
             "**/*"
         );
-        const files = await glob(searchPath, { nodir: true });
+        const files = await getAllFiles(searchPath);
+        // const files = await glob(searchPath, { nodir: true });
         if (files.length === 0) {
             callback({
                 text: `No files found in the folder path ${input.folderPath} of the repository ${input.repoName}. Please provide a valid folder path.`,
@@ -176,7 +178,7 @@ Make sure to specify the correct repository and folder path so the system can ef
 Current context:
 {{recentMessages}}
 ---
-Response format should be formatted in JSON block like this: 
+Response format should be formatted in JSON block like this:
 { "repoName": "project-management-tool", "folderPath": "src/utils" }
 `;
     const context2 = await composeContext({
