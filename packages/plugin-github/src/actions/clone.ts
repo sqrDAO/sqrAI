@@ -176,7 +176,17 @@ export const cloneRepoAction: Action = {
 
             // if clone success, then create embedding from files in repo
             if (result.success) {
-                await saveRepoToDatabase(result, runtime);
+                try {
+                    await saveRepoToDatabase(result, runtime);
+                } catch (error) {
+                    elizaLogger.error(
+                        `Failed to save repo to database. Error: ${error}`
+                    );
+                    await callback({
+                        text: "Failed to index repository to database",
+                    });
+                    return;
+                }
             }
 
             if (result.success) {
@@ -240,8 +250,8 @@ async function saveRepoToDatabase(result, runtime: IAgentRuntime) {
     // get files by path
     const envPath = runtime.getSetting("GITHUB_PATH") as string;
     const searchPath = envPath
-        ? path.join(result.repo.localPath, envPath, "**/*")
-        : path.join(result.repo.localPath, "**/*");
+        ? path.join(result.repo.localPath, envPath)
+        : path.join(result.repo.localPath);
     // const searchPath = path.join(result.repo.localPath, "**/*");
 
     const files = await getAllFiles(searchPath);

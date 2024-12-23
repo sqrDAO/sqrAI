@@ -16,8 +16,6 @@ import fs from "fs";
 import { v4 } from "uuid";
 import { getAllFiles } from "./clone";
 
-
-
 export const gendocAction: Action = {
     name: "GEN_DOC",
     similes: ["GEN_DOC", "CREATE_DOC", "GENERATE_DOC_FOR_CODE"],
@@ -57,8 +55,7 @@ export const gendocAction: Action = {
 
         const searchPath = path.join(
             foundRepo.rows[0].localPath,
-            input.folderPath,
-            "**/*"
+            input.folderPath
         );
         const files = await getAllFiles(searchPath);
         // const files = await glob(searchPath, { nodir: true });
