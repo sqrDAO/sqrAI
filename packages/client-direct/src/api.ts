@@ -4,6 +4,7 @@ import cors from "cors";
 
 import {
     AgentRuntime,
+    CharacterConfig,
     elizaLogger,
     getEnvVariable,
     validateCharacterConfig,
@@ -52,6 +53,30 @@ export function createApiRouter(
             res.status(404).json({ error: "Agent not found" });
             return;
         }
+
+        res.json({
+            id: agent.agentId,
+            character: agent.character,
+        });
+    });
+
+    router.post("/agents", async (req, res) => {
+        const config = req.body;
+        let character = null;
+        try {
+            elizaLogger.log(`Parsing character: ${config}`);
+            character = validateCharacterConfig(config);
+        } catch (e) {
+            elizaLogger.error(`Error parsing character: ${e}`);
+            res.status(400).json({
+                success: false,
+                message: e.message,
+            });
+            return;
+        }
+
+        const agent = await directClient.startAgent(character);
+        elizaLogger.log(`${character.name} started`);
 
         res.json({
             id: agent.agentId,
