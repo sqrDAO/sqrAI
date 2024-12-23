@@ -34,7 +34,7 @@ async function createPRInfo(
     runtime: IAgentRuntime,
     message: Memory,
     repoSourcesKnowledge: Memory
-) {
+): any {
     const template = `
 You are about to create a pull request from branch main to main in ${repoSourcesKnowledge.content.sourceRepo} to create an readme file for a service. Here are readme details:
 ${repoSourcesKnowledge.content.text}\n\n\n
@@ -54,6 +54,7 @@ You must generate for me a new branch name, a commit message, a title for the PR
     });
     const output = parseJSONObjectFromText(result);
     elizaLogger.log("Result:", output);
+    output.newBranch = output.newBranch + `-${Date.now()}`;
     return output;
 }
 
@@ -78,7 +79,10 @@ export const createPRAction: Action = {
             data: { login },
         } = await octokit.rest.users.getAuthenticated();
         console.log("Hello, %s", login);
-        const repoSourcesKnowledge = await findRepoSource(runtime, message);
+        const repoSourcesKnowledge = (await findRepoSource(
+            runtime,
+            message
+        )) as Memory;
         const prDetail = await createPRInfo(
             runtime,
             message,
@@ -90,23 +94,51 @@ export const createPRAction: Action = {
 
         const newBranch = prDetail.newBranch;
 
-        // Checkout new branch from current branch
-        await git.checkoutBranch(newBranch, currentBranch);
+        try {
+            // Checkout new branch from current branch
+            await git.checkoutBranch(newBranch, currentBranch);
 
-        await git.add(".");
-        await git.commit(prDetail.title);
-        await git.push("origin", newBranch);
-        // Create PR
-        const pr = await octokit.pulls.create({
-            owner: prDetail.owner,
-            repo: prDetail.repo,
-            title: prDetail.title,
-            body: prDetail.description,
-            head: newBranch,
-            base: currentBranch,
-        });
+            await git.add(".");
+            await git.commit(prDetail.title);
+            await git.push("origin", newBranch);
+            // Create PR
+            await octokit.pulls.create({
+                owner: prDetail.owner,
+                repo: prDetail.repo,
+                title: prDetail.title,
+                body: prDetail.description,
+                head: newBranch,
+                base: currentBranch,
+            });
 
-        return pr.data;
+            await callback({
+                text: "Pull request created",
+            });
+
+            await git.checkout(currentBranch);
+            return;
+        } catch (error) {
+            elizaLogger.error("Error creating pull request: ", error);
+            await callback({
+                text: `Error creating pull request: ${error}`,
+            });
+        }
     },
-    examples: [],
+    examples: [
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Create a pull request",
+                },
+            },
+            {
+                user: "{{agentName}}",
+                content: {
+                    text: "Pull request created",
+                    action: "CREATE_PULL_REQUEST",
+                },
+            },
+        ],
+    ],
 };
