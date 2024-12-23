@@ -49,7 +49,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/agent ./agent
 COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/scripts ./scripts
-COPY --from=builder /app/characters ./characters
+# COPY --from=builder /app/characters ./characters
 
 # Set the command to run the application
-CMD ["pnpm", "start", "--character=characters/codebot.character.json"]
+CMD ["pnpm", "start"]
