@@ -53,14 +53,52 @@ export const createFileAction: Action = {
         elizaLogger.log("Content:", content);
 
         // create the file with the provided content
-        await fs.mkdir(path.dirname(filePath), { recursive: true });
-        await fs.writeFile(filePath, content, "utf8");
-        elizaLogger.log(`File created at ${filePath}`);
-        return callback({
-            text: `File created at ${filePath}`,
-        });
+        try {
+            await fs.mkdir(path.dirname(filePath), { recursive: true });
+            await fs.writeFile(filePath, content, "utf8");
+            elizaLogger.log(`File created at ${filePath}`);
+            return callback({
+                text: `File created at ${filePath}`,
+            });
+        } catch (error) {
+            elizaLogger.error("Error creating file: ", error);
+            return callback({
+                text: `Error creating file: ${error}`,
+            });
+        }
     },
-    examples: [],
+    examples: [
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Create file in folder /path/to/folder with content: Hello, World!",
+                },
+            },
+            {
+                user: "{{agentName}}",
+                content: {
+                    text: "File created at /path/to/folder",
+                    action: "CREATE_FILE",
+                },
+            },
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Use your output to create file doc for me",
+                },
+            },
+            {
+                user: "{{agentName}}",
+                content: {
+                    text: "ok, i created file at folder where source folder is",
+                    action: "CREATE_FILE",
+                },
+            },
+        ],
+    ],
 };
 
 export async function getPathFileAndContentFromContext(
@@ -83,8 +121,8 @@ Some file content found in the conversation:
 {{contextDocument}}
 
 ### Instructions:
+- Default you can use source folder from the context document as filePath.
 - If both the file path and content are provided by the user, output them in the specified JSON format.
-- If no file path is provided, you can use source folder from the context document.
 - If any required information is missing, ask a clarifying question to ensure both the path and content are captured accurately.
 - The output must strictly follow this JSON format:
 {

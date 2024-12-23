@@ -141,7 +141,23 @@ Generate a concise and well-formatted README.md file in markdown syntax, ensurin
         };
         callback(response);
     },
-    examples: [],
+    examples: [
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Generate documentation for code in repository project-management-tool and folder src/utils",
+                },
+            },
+            {
+                user: "{{agentName}}",
+                content: {
+                    text: "Here is the generated file content from your codes:\n# Introduction\n\nThis repository contains utility scripts for managing projects.\n\n# File Descriptions\n\n## utils.js\n\nThis file contains utility functions for managing projects.\n\n## constants.js\n\nThis file contains constants used in the project.\n\n# Usage Instructions\n\nTo use the utility functions, import the utils.js file in your project.\n\nTo use the constants, import the constants.js file in your project.\n\n# Dependencies\n\nNone\n\n# Additional Notes\n\n- The utils.js file contains functions for managing tasks and deadlines.\n\n- The constants.js file contains project-specific constants.\n\nOutput Format:\n\nGenerate a concise and well-formatted README.md file in markdown syntax, ensuring clarity and appropriate structure.",
+                    action: "GEN_DOC",
+                },
+            },
+        ],
+    ],
 };
 
 export async function getRepoAndPathFromContext(
