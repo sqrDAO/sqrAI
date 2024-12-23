@@ -254,7 +254,6 @@ async function saveRepoToDatabase(result, runtime: IAgentRuntime) {
         : path.join(result.repo.localPath);
     // const searchPath = path.join(result.repo.localPath, "**/*");
 
-    const files = await getAllFiles(searchPath);
     const newRepo = await pgClient.query(
         `INSERT INTO repositories(id, name, "localPath", owner, description) VALUES($1, $2, $3, $4, $5) RETURNING *`,
         [
@@ -265,6 +264,8 @@ async function saveRepoToDatabase(result, runtime: IAgentRuntime) {
             result.repo.url,
         ]
     );
+    const files = await getAllFiles(searchPath);
+
     for (const file of files) {
         const relativePath = path.relative(result.repo.localPath, file);
         const content = fs.readFileSync(file, "utf-8");
