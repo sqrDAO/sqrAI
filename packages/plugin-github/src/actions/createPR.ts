@@ -94,13 +94,22 @@ export const createPRAction: Action = {
 
         const newBranch = prDetail.newBranch;
 
+        // create remote to push the branch
+        const remoteUrl = `https://${runtime.getSetting("GITHUB_API_TOKEN")}@github.com/${prDetail.owner}/${prDetail.repo}.git`;
+        const remotes = await git.getRemotes(true);
+        const existingRemote = remotes.find(
+            (remote) => remote.name === "remote"
+        );
+        if (!existingRemote) {
+            await git.addRemote("remote", remoteUrl);
+        }
+
         try {
             // Checkout new branch from current branch
             await git.checkoutBranch(newBranch, currentBranch);
-
             await git.add(".");
             await git.commit(prDetail.title);
-            await git.push("origin", newBranch);
+            await git.push("remote", newBranch);
             // Create PR
             await octokit.pulls.create({
                 owner: prDetail.owner,
