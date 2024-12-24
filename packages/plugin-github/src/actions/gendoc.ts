@@ -47,7 +47,7 @@ export const gendocAction: Action = {
 
         const foundRepo = await pgClient.query(
             `SELECT * FROM repositories WHERE name = $1 ORDER BY "createdAt" DESC LIMIT 1 `,
-            [input.repoName]
+            [input.repoName.toLowerCase()]
         );
         if (foundRepo.rows.length === 0) {
             callback({

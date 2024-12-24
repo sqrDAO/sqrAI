@@ -258,9 +258,9 @@ async function saveRepoToDatabase(result, runtime: IAgentRuntime) {
         `INSERT INTO repositories(id, name, "localPath", owner, description) VALUES($1, $2, $3, $4, $5) RETURNING *`,
         [
             v4(),
-            result.repo.name,
+            result.repo.name.toLowerCase(),
             result.repo.localPath,
-            result.repo.owner,
+            result.repo.owner.toLowerCase(),
             result.repo.url,
         ]
     );
