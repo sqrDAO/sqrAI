@@ -90,6 +90,8 @@ export const createPRAction: Action = {
         );
         console.log(prDetail);
         const git = simpleGit(repoSourcesKnowledge.content.sourceRepo);
+        await git.addConfig("user.email", `${login}@github.com`);
+        await git.addConfig("user.name", login);
         const currentBranch = (await git.status()).current;
 
         const newBranch = prDetail.newBranch;
