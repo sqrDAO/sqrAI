@@ -3,11 +3,14 @@ import {
     composeContext,
     elizaLogger,
     generateText,
+    GoalStatus,
     HandlerCallback,
     IAgentRuntime,
     Memory,
     parseJSONObjectFromText,
     State,
+    updateGoal,
+    UUID,
 } from "@ai16z/eliza";
 import fs from "fs/promises";
 import path from "path";
@@ -29,41 +32,60 @@ export const createFileAction: Action = {
         elizaLogger.log("Creating a file action: ", message);
         // get repo and path from context
 
-        const knowledgeDocument = await runtime.databaseAdapter.getMemories({
-            roomId: message.roomId as `${string}-${string}-${string}-${string}-${string}`,
-            tableName: "documents",
-            agentId: runtime.agentId,
-        });
-        const contextDocument = knowledgeDocument
-            .map(
-                (doc) =>
-                    `source folder: ${doc.content.source} \n content: ${doc.content.text} \n source repo: ${doc.content.sourceRepo}`
+        const sortedGoals = state.goalsData
+            .filter(
+                (a) =>
+                    a.status === GoalStatus.IN_PROGRESS &&
+                    a.name.startsWith("Gendoc")
             )
-            .join("\n");
-        state.contextDocument = contextDocument;
-        const input = await getPathFileAndContentFromContext(
-            runtime,
-            message,
-            state,
-            _options,
-            callback
-        );
-        const { filePath, content } = input;
-        elizaLogger.log("File Path:", filePath);
-        elizaLogger.log("Content:", content);
+            // @ts-ignore
+            .sort((a, b) => b.createdAt - a.createdAt);
+        const latestGoal = sortedGoals[0];
+        if (latestGoal) {
+            const docId = latestGoal.name.split(":")[1] as UUID;
 
-        // create the file with the provided content
-        try {
-            await fs.mkdir(path.dirname(filePath), { recursive: true });
-            await fs.writeFile(filePath, content, "utf8");
-            elizaLogger.log(`File created at ${filePath}`);
-            return callback({
-                text: `File created at ${filePath}`,
-            });
-        } catch (error) {
-            elizaLogger.error("Error creating file: ", error);
-            return callback({
-                text: `Error creating file: ${error}`,
+            const doc = await runtime.documentsManager.getMemoryById(docId);
+
+            const contextDocument = {
+                text: doc.content.text,
+                source: doc.content.source,
+                sourceRepo: doc.content.sourceRepo,
+            };
+
+            const input = await getPathFileAndContentFromContext(
+                runtime,
+                JSON.stringify(contextDocument, null, 2),
+                state,
+                _options,
+                callback
+            );
+            const { filePath } = input;
+            elizaLogger.log("File Path:", filePath);
+            elizaLogger.log("Content:", contextDocument.text);
+
+            // create the file with the provided content
+            try {
+                await fs.mkdir(path.dirname(filePath), { recursive: true });
+                await fs.writeFile(filePath, contextDocument.text, "utf8");
+                elizaLogger.log(`File created at ${filePath}`);
+
+                await updateGoal({
+                    runtime,
+                    goal: { ...latestGoal, status: GoalStatus.DONE },
+                });
+
+                return callback({
+                    text: `File created at ${filePath}`,
+                });
+            } catch (error) {
+                elizaLogger.error("Error creating file: ", error);
+                return callback({
+                    text: `Error creating file: ${error}`,
+                });
+            }
+        } else {
+            callback({
+                text: "You must call gendoc before call create file",
             });
         }
     },
@@ -103,22 +125,22 @@ export const createFileAction: Action = {
 
 export async function getPathFileAndContentFromContext(
     runtime: IAgentRuntime,
-    message: Memory,
-    _state: State,
+    docContent: string,
+    state: State,
     _options: any,
     callback: HandlerCallback
-): Promise<{ filePath: string; content: string }> {
+): Promise<{ filePath: string }> {
     const contextTemplate = `
 You are working in a conversational context with a user. Your task is to extract and format information necessary to create a local file based on the user's input. To achieve this, look for the following details in the conversation:
 
-1. **Path to the File**: The directory or file path where the user wants the file to be created. Default you can use folder input in file content  
-2. **Content**: The content the user wants to include in the file.
+1. **Path to the File**: The directory or file path where the user wants the file to be created. Default you can use folder input in file content
+2. **User instructions**: Additional instruction of user.
 
 ### Context of Conversation:
 {{recentMessages}}
 
-Some file content found in the conversation:
-{{contextDocument}}
+The content of the file to be created:
+${docContent}
 
 ### Instructions:
 - Default you can use source folder from the context document as filePath.
@@ -127,13 +149,10 @@ Some file content found in the conversation:
 - The output must strictly follow this JSON format:
 {
   "filePath": "example/path/to/file",
-  "content": "Example content to write to the file."
 }
 `;
     const context2 = await composeContext({
-        state: {
-            ..._state,
-        },
+        state,
         template: contextTemplate,
     });
     const resultRepo = await generateText({
@@ -143,12 +162,6 @@ Some file content found in the conversation:
     });
     const input = parseJSONObjectFromText(resultRepo);
     elizaLogger.log("Result:", input);
-    if (!input.content) {
-        callback({
-            text: "Content is missing.",
-        });
-        return;
-    }
     if (!input.filePath) {
         callback({
             text: "File path is missing.",
@@ -157,6 +170,5 @@ Some file content found in the conversation:
     }
     return {
         filePath: input.filePath,
-        content: input.content,
     };
 }

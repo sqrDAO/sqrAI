@@ -1,10 +1,13 @@
 import {
     Action,
+    GoalStatus,
     HandlerCallback,
     IAgentRuntime,
     Memory,
     State,
+    UUID,
     composeContext,
+    createGoal,
     elizaLogger,
     embed,
     generateText,
@@ -44,7 +47,7 @@ export const gendocAction: Action = {
 
         const foundRepo = await pgClient.query(
             `SELECT * FROM repositories WHERE name = $1 ORDER BY "createdAt" DESC LIMIT 1 `,
-            [input.repoName]
+            [input.repoName.toLowerCase()]
         );
         if (foundRepo.rows.length === 0) {
             callback({
@@ -116,8 +119,11 @@ Generate a concise and well-formatted README.md file in markdown syntax, ensurin
             )} \n Source Repo: ${foundRepo.rows[0].localPath}
             \n Repo name: ${foundRepo.rows[0].name} \n Owner: ${foundRepo.rows[0].owner}`
         );
+
+        const docId = v4() as UUID;
+
         await runtime.documentsManager.createMemory({
-            id: v4() as `${string}-${string}-${string}-${string}-${string}`,
+            id: docId,
             content: {
                 text: resultReadme,
                 source: path.join(
@@ -135,8 +141,28 @@ Generate a concise and well-formatted README.md file in markdown syntax, ensurin
             embedding: embedding,
         });
 
+        await createGoal({
+            runtime,
+            goal: {
+                name: `Gendoc:${docId}`,
+                roomId: message.roomId,
+                userId: message.userId,
+                status: GoalStatus.IN_PROGRESS,
+                objectives: [
+                    {
+                        description: `Generate documentation: ${docId}`,
+                        completed: true,
+                    },
+                    {
+                        description: "Create file",
+                        completed: false,
+                    },
+                ],
+            },
+        });
+
         const response = {
-            text: `Here is the generated file content from your codes:\n${resultReadme}`,
+            text: resultReadme,
         };
         callback(response);
     },
