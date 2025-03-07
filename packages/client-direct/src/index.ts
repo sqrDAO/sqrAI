@@ -76,8 +76,8 @@ export class DirectClient {
 
         const apiRouter = createApiRouter(this.agents, this);
         this.app.use(apiRouter);
-        this.app.use('/repos', repoApiRouter);
-        this.app.use('/cals', calendarApiRouter);
+        this.app.use("/repos", repoApiRouter);
+        this.app.use("/cals", calendarApiRouter);
 
         // Define an interface that extends the Express Request interface
         interface CustomRequest extends ExpressRequest {
@@ -173,9 +173,9 @@ export class DirectClient {
             "/:agentId/message",
             async (req: express.Request, res: express.Response) => {
                 const agentId = req.params.agentId;
-                const roomId = stringToUuid(
-                    req.body.roomId ?? "default-room-" + agentId
-                );
+                const roomId = req.body.roomId
+                    ? req.body.roomId
+                    : stringToUuid("default-room-" + agentId);
                 const userId = stringToUuid(req.body.userId ?? "user");
 
                 let runtime = this.agents.get(agentId);
