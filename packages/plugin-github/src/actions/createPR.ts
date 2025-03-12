@@ -6,6 +6,7 @@ import {
     HandlerCallback,
     IAgentRuntime,
     Memory,
+    ModelClass,
     parseJSONObjectFromText,
     State,
 } from "@elizaos/core";
@@ -50,7 +51,7 @@ You must generate for me a new branch name, a commit message, a title for the PR
     const result = await generateText({
         runtime,
         context: template,
-        modelClass: "small",
+        modelClass: ModelClass.SMALL,
     });
     const output = parseJSONObjectFromText(result);
     elizaLogger.log("Result:", output);
