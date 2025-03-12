@@ -10,6 +10,7 @@ import {
     knowledge,
     KnowledgeItem,
     Memory,
+    ModelClass,
     ServiceType,
     State,
     stringToUuid,
@@ -206,7 +207,7 @@ Please return a summary of the website content as markdown format.
     const responseLLM = await generateText({
         runtime,
         context: contextTemplate,
-        modelClass: "large",
+        modelClass: ModelClass.LARGE,
     });
 
     return responseLLM;

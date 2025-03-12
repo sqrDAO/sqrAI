@@ -6,6 +6,7 @@ import {
     HandlerCallback,
     IAgentRuntime,
     Memory,
+    ModelClass,
     parseJSONObjectFromText,
     State,
 } from "@elizaos/core";
@@ -56,7 +57,7 @@ const summarizeRepo = async (
         const summary = await generateText({
             runtime,
             context,
-            modelClass: "small",
+            modelClass: ModelClass.SMALL,
         });
 
         elizaLogger.log("Summary:", summary);
@@ -116,7 +117,7 @@ const generateRepoSummary = async (
         const summary = await generateText({
             runtime,
             context,
-            modelClass: "small",
+            modelClass: ModelClass.SMALL,
         });
 
         elizaLogger.log("Summary:", summary);

@@ -7,6 +7,7 @@ import {
     HandlerCallback,
     IAgentRuntime,
     Memory,
+    ModelClass,
     parseJSONObjectFromText,
     State,
     updateGoal,
@@ -158,7 +159,7 @@ ${docContent}
     const resultRepo = await generateText({
         runtime,
         context: context2,
-        modelClass: "small",
+        modelClass: ModelClass.SMALL,
     });
     const input = parseJSONObjectFromText(resultRepo);
     elizaLogger.log("Result:", input);

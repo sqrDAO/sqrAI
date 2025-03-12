@@ -4,6 +4,7 @@ import {
     HandlerCallback,
     IAgentRuntime,
     Memory,
+    ModelClass,
     State,
     UUID,
     composeContext,
@@ -108,7 +109,7 @@ Generate a concise and well-formatted README.md file in markdown syntax, ensurin
         const resultReadme = await generateText({
             runtime,
             context: context,
-            modelClass: "small",
+            modelClass: ModelClass.SMALL,
         });
         // const content = { text: resultReadme };
         const embedding = await embed(
@@ -214,7 +215,7 @@ Response format should be formatted in JSON block like this:
     const resultRepo = await generateText({
         runtime,
         context: context2,
-        modelClass: "small",
+        modelClass: ModelClass.SMALL,
     });
     const input = parseJSONObjectFromText(resultRepo);
     elizaLogger.log("Result:", input);

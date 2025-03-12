@@ -1,4 +1,16 @@
-import { Action, elizaLogger, generateText, HandlerCallback, IAgentRuntime, Memory, parseJSONObjectFromText, State, stringToUuid, UUID } from "@elizaos/core";
+import {
+    Action,
+    elizaLogger,
+    generateText,
+    HandlerCallback,
+    IAgentRuntime,
+    Memory,
+    ModelClass,
+    parseJSONObjectFromText,
+    State,
+    stringToUuid,
+    UUID,
+} from "@elizaos/core";
 import { Database } from "../db";
 
 // this is a system action that should only be used by the system or the agent itself
@@ -6,7 +18,8 @@ import { Database } from "../db";
 export const notifyAction: Action = {
     name: "NOTIFY_EVENT",
     similes: ["REMIND_EVENT", "NOTIFY_USER"],
-    description: "Notify the user about a scheduled event. This action should only be used by system or the agent itself.",
+    description:
+        "Notify the user about a scheduled event. This action should only be used by system or the agent itself.",
     validate: async (runtime: IAgentRuntime, _message: Memory) => {
         elizaLogger.log("Validating notify user request");
         elizaLogger.log("Message:", _message);
@@ -24,10 +37,12 @@ export const notifyAction: Action = {
             return false;
         }
 
-        const roomId = stringToUuid( `self-message-${runtime.agentId}`);
+        const roomId = stringToUuid(`self-message-${runtime.agentId}`);
         // check if the message is from the agent
         if (message.roomId !== roomId) {
-            elizaLogger.error("Notify user action can only be performed by the agent");
+            elizaLogger.error(
+                "Notify user action can only be performed by the agent"
+            );
             return false;
         }
 
@@ -52,7 +67,7 @@ export const notifyAction: Action = {
         const extractionResult = await generateText({
             runtime,
             context: extractionContext,
-            modelClass: "small",
+            modelClass: ModelClass.SMALL,
         });
 
         elizaLogger.log("Extraction result:", extractionResult);
@@ -70,9 +85,9 @@ export const notifyAction: Action = {
 
         const db = new Database();
         const event = await db.instance
-            .selectFrom('calendar_events')
+            .selectFrom("calendar_events")
             .selectAll()
-            .where('id', '=', eventDetails.eventId)
+            .where("id", "=", eventDetails.eventId)
             .executeTakeFirstOrThrow();
 
         if (!event) {
@@ -101,25 +116,28 @@ export const notifyAction: Action = {
             "text": "Notification message"
         }
         \`\`\`
-        `
+        `;
 
         const notificationMessage = await generateText({
             runtime,
             context: notifyPromptTemplate,
-            modelClass: "small",
+            modelClass: ModelClass.SMALL,
         });
 
         elizaLogger.log("Notification message:", notificationMessage);
-        const parsedNotificationMessage = parseJSONObjectFromText(notificationMessage.trim());
+        const parsedNotificationMessage = parseJSONObjectFromText(
+            notificationMessage.trim()
+        );
 
         await runtime.messageManager.createMemory({
             agentId: runtime.agentId,
-            roomId: event.roomId as UUID || roomId,
+            roomId: (event.roomId as UUID) || roomId,
             userId: eventDetails.userId,
             content: {
                 text: parsedNotificationMessage.text,
                 user: state.agentName,
                 action: "NOTIFY_USER",
+                self: "self-message-from-bot", // Hardcode for query update message
             },
         });
 
