@@ -102,6 +102,7 @@ const worker = new Worker(
                 content: {
                     text: `Crawl website ${website} done, now you can summarize it`,
                     user: agentName,
+                    self: "self-message-from-bot", // Hardcode for query update message
                 },
             });
         } else {
